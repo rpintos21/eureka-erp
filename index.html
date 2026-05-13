@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Eureka! Lab ERP v22</title>
+    <title>Eureka! Lab ERP v23</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -26,10 +25,7 @@
         window.fb = { db, doc, updateDoc, increment, collection, addDoc, deleteDoc, setDoc };
 
         onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
-            if(d.exists()) {
-                window.currentFolio = d.data().lastFolio;
-                renderPreview();
-            }
+            if(d.exists()) { window.currentFolio = d.data().lastFolio; renderPreview(); }
         });
 
         onSnapshot(collection(db, "erp_clientes"), (s) => {
@@ -44,99 +40,74 @@
     </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f1f5f9; }
+        body { background: #0f172a; color: #f1f5f9; font-family: sans-serif; overflow: hidden; }
         .input-dark { background: #1e293b; border: 1px solid #334155; padding: 14px; border-radius: 12px; width: 100%; color: white; font-size: 16px; }
-        .input-dark:focus { border-color: #3b82f6; outline: none; }
+        .tab-btn { padding: 16px; flex: 1; text-align: center; font-weight: 800; font-size: 11px; color: #64748b; border-bottom: 3px solid transparent; text-transform: uppercase; }
+        .tab-active { color: #3b82f6; border-bottom-color: #3b82f6; background: #1e293b; }
         
-        /* Contenedor de Previsualización */
-        .preview-pane { background: #334155; display: flex; justify-content: center; padding: 10px; overflow-y: auto; }
-        
-        /* HOJA PDF DINÁMICA */
         #pdf-canvas { 
             background: white; color: #1e293b; width: 210mm; min-height: 297mm; 
             padding: 15mm; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             transform: scale(0.35); transform-origin: top center;
         }
-        @media (min-width: 640px) { #pdf-canvas { transform: scale(0.5); } }
         @media (min-width: 1024px) { #pdf-canvas { transform: scale(0.75); } }
-
-        .tab-btn { padding: 16px; flex: 1; text-align: center; font-weight: 800; font-size: 11px; color: #64748b; border-bottom: 3px solid transparent; text-transform: uppercase; }
-        .tab-active { color: #3b82f6; border-bottom-color: #3b82f6; background: #1e293b; }
-        
-        /* Fix para evitar que el teclado tape botones en móvil */
-        .panel-scroll { height: calc(100vh - 120px); overflow-y: auto; }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="h-screen flex flex-col">
 
-    <nav class="flex bg-slate-900 border-b border-slate-800 shrink-0">
-        <button onclick="setTab('edit')" id="tab-edit" class="tab-btn tab-active">Cotizar</button>
+    <nav class="flex bg-slate-900 border-b border-slate-800">
+        <button onclick="setTab('edit')" id="tab-edit" class="tab-btn tab-active">Editor</button>
         <button onclick="setTab('hist')" id="tab-hist" class="tab-btn">Historial</button>
         <button onclick="setTab('clients')" id="tab-clients" class="tab-btn">Clientes</button>
     </nav>
 
     <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        
-        <aside class="lg:w-1/3 bg-slate-900 flex flex-col border-r border-slate-800">
-            <div id="panel-edit" class="panel-scroll p-4 space-y-6">
-                <section class="space-y-3">
-                    <select id="q-client" class="input-dark" onchange="renderPreview()"></select>
-                    <input type="text" id="q-desc" placeholder="Descripción del Folio" class="input-dark" oninput="renderPreview()">
-                </section>
+        <aside class="lg:w-1/3 bg-slate-900 overflow-y-auto p-4 space-y-6">
+            <div id="panel-edit" class="space-y-4">
+                <select id="q-client" class="input-dark" onchange="renderPreview()"></select>
+                <input type="text" id="q-desc" placeholder="Descripción del Folio" class="input-dark" oninput="renderPreview()">
 
-                <section class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 space-y-4">
-                    <input type="text" id="i-name" placeholder="¿Qué estás vendiendo?" class="input-dark">
+                <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 space-y-3">
+                    <input type="text" id="i-name" placeholder="Servicio/Producto" class="input-dark">
                     <div class="flex gap-2">
                         <input type="number" id="i-qty" value="1" class="input-dark text-center w-20">
-                        <input type="number" id="i-price" placeholder="$ Precio" class="input-dark flex-1">
-                        <button onclick="document.getElementById('f-img').click()" id="b-img" class="bg-slate-700 px-4 rounded-xl text-xl border border-slate-600">📷</button>
+                        <input type="number" id="i-price" placeholder="Precio $" class="input-dark flex-1">
+                        <button onclick="document.getElementById('f-img').click()" id="b-img" class="bg-slate-700 px-4 rounded-xl text-xl">📷</button>
                     </div>
                     <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
-                    <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-sm uppercase tracking-widest">+ AÑADIR ITEM</button>
-                </section>
+                    <button onclick="addItem()" class="w-full bg-blue-600 py-3 rounded-xl font-black">+ AÑADIR</button>
+                </div>
 
                 <div id="items-list" class="space-y-2"></div>
-
-                <div class="pt-4">
-                    <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-5 rounded-2xl font-black text-lg shadow-xl shadow-emerald-900/20 uppercase transition-all active:scale-95">GUARDAR Y ENVIAR</button>
-                </div>
+                <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-4 rounded-2xl font-black text-lg uppercase shadow-xl">Guardar y Enviar</button>
             </div>
 
-            <div id="panel-hist" class="panel-scroll p-4 hidden space-y-4"></div>
-            <div id="panel-clients" class="panel-scroll p-4 hidden space-y-4">
-                <div class="flex gap-2"><input type="text" id="c-new" placeholder="Nombre Cliente" class="input-dark"><button onclick="addClient()" class="bg-blue-600 px-6 rounded-xl font-bold">+</button></div>
+            <div id="panel-hist" class="hidden space-y-3"></div>
+            <div id="panel-clients" class="hidden space-y-4">
+                <div class="flex gap-2"><input type="text" id="c-new" placeholder="Nuevo Cliente" class="input-dark"><button onclick="addClient()" class="bg-blue-600 px-4 rounded-xl font-bold">+</button></div>
                 <div id="clients-list" class="space-y-2"></div>
             </div>
         </aside>
 
-        <main id="preview-pane" class="lg:w-2/3 preview-pane overflow-y-auto">
+        <main id="preview-pane" class="lg:w-2/3 bg-slate-800 overflow-y-auto p-4 flex justify-center">
             <div id="pdf-canvas">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #0f172a; padding-bottom: 20px; margin-bottom: 30px;">
-                    <div style="width: 50%;">
-                        <img src="logo.png" style="height: 100px; display: block;">
-                        </div>
-                    <div style="text-align: right; width: 45%;">
-                        <h2 id="p-folio" style="font-size: 14px; font-weight: 800; margin: 0; color: #0f172a; text-transform: uppercase;">COT_EUREKALAB-1000</h2>
-                        <div style="height: 2px; background: #0f172a; width: 100%; margin: 10px 0;"></div>
-                        <p style="font-size: 12px; margin: 5px 0; color: #64748b;">FECHA: <span id="p-date" style="color: #0f172a; font-weight: 800;"></span></p>
-                        <p style="font-size: 12px; margin: 0; color: #64748b;">CLIENTE: <span id="p-client" style="color: #0f172a; font-weight: 800; text-transform: uppercase;"></span></p>
+                <div style="display:flex; justify-content:space-between; border-bottom:4px solid #0f172a; padding-bottom:20px; margin-bottom:30px">
+                    <div><img src="logo.png" style="height:90px"></div>
+                    <div style="text-align:right">
+                        <h2 id="p-folio" style="font-size:14px; font-weight:800; margin:0">COT_EUREKALAB-1000</h2>
+                        <p style="font-size:12px; margin:10px 0 0">Fecha: <span id="p-date"></span></p>
+                        <p style="font-size:12px; margin:0">Cliente: <span id="p-client" style="font-weight:800"></span></p>
                     </div>
                 </div>
 
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid #0f172a;">
-                            <th style="padding: 15px 5px; text-align: left; font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">DETALLE DEL SERVICIO</th>
-                            <th style="padding: 15px 5px; text-align: center; font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; width: 60px;">CANT</th>
-                            <th style="padding: 15px 5px; text-align: right; font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; width: 120px;">TOTAL</th>
-                        </tr>
-                    </thead>
+                <table style="width:100%; border-collapse:collapse">
+                    <thead><tr style="border-bottom:2px solid #0f172a; font-size:10px; color:#64748b"><th style="padding:10px; text-align:left">DETALLE</th><th style="padding:10px; text-align:center">CANT</th><th style="padding:10px; text-align:right">TOTAL</th></tr></thead>
                     <tbody id="p-body"></tbody>
                 </table>
 
-                <div style="margin-top: 50px; text-align: right; border-top: 1px solid #e2e8f0; padding-top: 20px;">
-                    <p style="font-size: 11px; font-weight: 800; color: #94a3b8; margin: 0; text-transform: uppercase;">TOTAL INVERSIÓN NETO</p>
-                    <h2 id="p-total" style="font-size: 48px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -2px;">$0</h2>
+                <div style="margin-top:40px; text-align:right; border-top:1px solid #eee; pt-20">
+                    <p style="font-size:10px; color:#64748b; margin:0">TOTAL NETO</p>
+                    <h2 id="p-total" style="font-size:40px; font-weight:900; margin:0">$0</h2>
                 </div>
             </div>
         </main>
@@ -154,17 +125,15 @@
         }
 
         function handleImg(input) {
-            const reader = new FileReader();
-            reader.onload = e => { tempImg = e.target.result; document.getElementById('b-img').innerHTML = "✅"; };
-            reader.readAsDataURL(input.files[0]);
+            const r = new FileReader();
+            r.onload = e => { tempImg = e.target.result; document.getElementById('b-img').innerHTML = "✅"; };
+            r.readAsDataURL(input.files[0]);
         }
 
         function addItem() {
-            const name = document.getElementById('i-name').value.toUpperCase();
-            const price = Number(document.getElementById('i-price').value);
-            const qty = Number(document.getElementById('i-qty').value);
-            if(!name || price <= 0) return;
-            items.push({ name, price, qty, total: price * qty, img: tempImg });
+            const n = document.getElementById('i-name').value.toUpperCase(), p = Number(document.getElementById('i-price').value), q = Number(document.getElementById('i-qty').value);
+            if(!n || p <= 0) return;
+            items.push({ name: n, price: p, qty: q, total: p * q, img: tempImg });
             document.getElementById('i-name').value = ""; document.getElementById('i-price').value = "";
             tempImg = null; document.getElementById('b-img').innerHTML = "📷";
             renderPreview();
@@ -174,117 +143,83 @@
             document.getElementById('p-date').innerText = new Date().toLocaleDateString('es-CL');
             document.getElementById('p-client').innerText = document.getElementById('q-client').value || '---';
             const desc = document.getElementById('q-desc').value || 'S/D';
-            const folioStr = `COT_EUREKALAB-${window.currentFolio || 1000} - ${desc.toUpperCase()}`;
-            document.getElementById('p-folio').innerText = folioStr;
+            document.getElementById('p-folio').innerText = `COT_EUREKALAB-${window.currentFolio || 1000} - ${desc.toUpperCase()}`;
 
             const tbody = document.getElementById('p-body');
             tbody.innerHTML = items.map(it => `
-                <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 15px 5px; font-size: 13px; font-weight: 600;">
+                <tr style="border-bottom:1px solid #f1f5f9">
+                    <td style="padding:12px 5px; font-size:13px">
                         <div style="display:flex; align-items:center; gap:10px">
-                            ${it.img ? `<img src="${it.img}" style="width:45px; height:45px; object-fit:cover; border-radius:8px">` : ''}
-                            ${it.name}
+                            ${it.img ? `<img src="${it.img}" style="width:50px; height:50px; object-fit:contain; background:#f8fafc; border-radius:6px">` : ''}
+                            <b>${it.name}</b>
                         </div>
                     </td>
-                    <td style="padding: 15px 5px; text-align: center; font-weight: 600;">${it.qty}</td>
-                    <td style="padding: 15px 5px; text-align: right; font-weight: 800; font-size: 15px;">$${it.total.toLocaleString('es-CL')}</td>
+                    <td style="padding:12px 5px; text-align:center">${it.qty}</td>
+                    <td style="padding:12px 5px; text-align:right; font-weight:800">$${it.total.toLocaleString('es-CL')}</td>
                 </tr>
             `).join('');
-
-            const total = items.reduce((s,i) => s + i.total, 0);
-            document.getElementById('p-total').innerText = `$${total.toLocaleString('es-CL')}`;
-            
-            document.getElementById('items-list').innerHTML = items.map((it, i) => `
-                <div class="flex justify-between items-center bg-slate-800 p-3 rounded-xl border border-slate-700 text-xs">
-                    <span class="font-bold">${it.name}</span>
-                    <button onclick="items.splice(${i},1); renderPreview();" class="text-red-400 font-bold px-3">✕</button>
-                </div>`).join('');
+            const tot = items.reduce((s,i) => s + i.total, 0);
+            document.getElementById('p-total').innerText = `$${tot.toLocaleString('es-CL')}`;
+            document.getElementById('items-list').innerHTML = items.map((it, i) => `<div class="flex justify-between bg-slate-800 p-2 rounded-lg text-xs"><span>${it.name}</span><button onclick="items.splice(${i},1);renderPreview();" class="text-red-400 font-bold">✕</button></div>`).join('');
         }
 
         async function saveAndSend() {
-            const client = document.getElementById('q-client').value;
-            const desc = document.getElementById('q-desc').value;
-            if(!client || items.length === 0) return alert("Completa cliente y productos");
+            const client = document.getElementById('q-client').value, desc = document.getElementById('q-desc').value;
+            if(!client || items.length === 0) return alert("Faltan datos");
 
             const folioStr = `COT_EUREKALAB-${window.currentFolio} - ${desc.toUpperCase()}`;
-            const data = { 
-                folio: window.currentFolio, folioCode: folioStr, client, desc, 
-                items: items.map(it => ({...it, img: it.img ? 'HAS_IMAGE' : null})), 
-                total: items.reduce((s,i)=>s+i.total,0), date: new Date().toLocaleDateString('es-CL') 
-            };
+            const data = { folio: window.currentFolio, folioCode: folioStr, client, desc, items: items.map(it=>({...it, img: it.img?'HAS_IMG':null})), total: items.reduce((s,i)=>s+i.total,0), date: new Date().toLocaleDateString('es-CL') };
 
-            if(editingId) {
-                await fb.setDoc(fb.doc(fb.db, "erp_cotizaciones", editingId), data);
-                editingId = null;
-            } else {
-                await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), data);
-                await fb.updateDoc(fb.doc(fb.db, "config", "eureka_erp_v10"), { lastFolio: fb.increment(1) });
-            }
+            try {
+                if(editingId) { await fb.setDoc(fb.doc(fb.db, "erp_cotizaciones", editingId), data); editingId = null; }
+                else { await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), data); await fb.updateDoc(fb.doc(fb.db, "config", "eureka_erp_v10"), { lastFolio: fb.increment(1) }); }
 
-            const element = document.getElementById('pdf-canvas');
-            const opt = { 
-                margin: 0, filename: folioStr+'.pdf', image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 3, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
-            };
-            
-            const blob = await html2pdf().from(element).set(opt).output('blob');
-            const file = new File([blob], folioStr+'.pdf', { type: 'application/pdf' });
+                const opt = { margin:0, filename: folioStr+'.pdf', html2canvas:{scale:2, useCORS:true}, jsPDF:{unit:'mm', format:'a4'} };
+                const worker = html2pdf().from(document.getElementById('pdf-canvas')).set(opt);
+                
+                const blob = await worker.output('blob');
+                const file = new File([blob], folioStr+'.pdf', { type: 'application/pdf' });
 
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({ files: [file], title: folioStr });
-            } else {
-                html2pdf().from(element).set(opt).save();
-            }
+                if (navigator.share) {
+                    await navigator.share({ files: [file], title: folioStr }).catch(() => worker.save());
+                } else {
+                    worker.save();
+                }
 
-            items = []; document.getElementById('q-desc').value = ""; 
-            renderPreview();
-            alert("Éxito. Folio guardado e incrementado.");
+                items = []; document.getElementById('q-desc').value = ""; renderPreview();
+                alert("Guardado con éxito");
+            } catch (e) { alert("Error al guardar: " + e.message); }
         }
 
         function updateUI() {
-            const sel = document.getElementById('q-client');
-            const curr = sel.value;
-            sel.innerHTML = '<option value="">SELECCIONAR CLIENTE</option>';
+            const sel = document.getElementById('q-client'); sel.innerHTML = '<option value="">CLIENTE</option>';
             window.clientes.forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
-            sel.value = curr;
-
-            document.getElementById('clients-list').innerHTML = window.clientes.map(c => `
-                <div class="bg-slate-800 p-4 rounded-xl flex justify-between items-center border border-slate-700">
-                    <span class="font-bold text-sm uppercase italic">${c.name}</span>
-                    <div class="flex gap-4">
-                        <button onclick="fb.deleteDoc(fb.doc(fb.db, 'erp_clientes', '${c.id}'))" class="text-red-500 font-bold text-xs">ELIMINAR</button>
-                    </div>
-                </div>`).join('');
+            document.getElementById('clients-list').innerHTML = window.clientes.map(c => `<div class="bg-slate-800 p-3 rounded-xl flex justify-between items-center"><b>${c.name}</b><button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="text-red-500 font-bold">✕</button></div>`).join('');
         }
 
         async function addClient() {
             const n = document.getElementById('c-new').value.toUpperCase();
-            if(n) { await fb.addDoc(fb.collection(fb.db, "erp_clientes"), { name: n }); document.getElementById('c-new').value = ""; }
+            if(n) { await fb.addDoc(fb.collection(fb.db,"erp_clientes"), {name:n}); document.getElementById('c-new').value=""; }
         }
 
         function renderHistory() {
             document.getElementById('panel-hist').innerHTML = window.historial.map(h => `
-                <div class="bg-slate-800 p-4 rounded-2xl border-l-8 border-blue-600 shadow-xl">
-                    <p class="text-[9px] font-black opacity-40 uppercase mb-1">${h.folioCode}</p>
-                    <p class="font-black text-sm uppercase italic tracking-tight">${h.client}</p>
-                    <div class="flex justify-between items-center mt-3">
-                        <span class="text-emerald-400 font-black tracking-widest">$${h.total.toLocaleString('es-CL')}</span>
+                <div class="bg-slate-800 p-4 rounded-xl border-l-4 border-blue-500">
+                    <p class="text-[9px] opacity-50">${h.folioCode}</p>
+                    <p class="font-bold text-sm uppercase">${h.client}</p>
+                    <div class="flex justify-between mt-3"><b>$${h.total.toLocaleString()}</b>
                         <div class="flex gap-2">
-                            <button onclick="loadEdit('${h.id}')" class="bg-blue-600 px-4 py-2 rounded-lg text-[10px] font-black uppercase">EDITAR</button>
-                            <button onclick="fb.deleteDoc(fb.doc(fb.db, 'erp_cotizaciones', '${h.id}'))" class="bg-red-900/40 text-red-400 px-4 py-2 rounded-lg text-[10px] font-black uppercase">BORRAR</button>
+                            <button onclick="loadEdit('${h.id}')" class="bg-blue-600 px-3 py-1 rounded text-[10px] font-bold">EDITAR</button>
+                            <button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="bg-red-900/40 px-3 py-1 rounded text-[10px] font-bold text-red-400">BORRAR</button>
                         </div>
                     </div>
                 </div>`).join('');
         }
 
         function loadEdit(id) {
-            const h = window.historial.find(x => x.id === id);
-            items = [...h.items];
-            document.getElementById('q-client').value = h.client;
-            document.getElementById('q-desc').value = h.desc || "";
-            editingId = id;
-            setTab('edit');
-            renderPreview();
+            const h = window.historial.find(x => x.id === id); items = [...h.items];
+            document.getElementById('q-client').value = h.client; document.getElementById('q-desc').value = h.desc || "";
+            editingId = id; setTab('edit'); renderPreview();
         }
     </script>
 </body>
