@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Eureka! ERP Pro v12</title>
+    <title>Eureka! ERP Pro v12.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&display=swap" rel="stylesheet">
@@ -42,99 +42,73 @@
     </script>
 
     <style>
-        :root { --primary: #0f172a; --accent: #10b981; }
-        body { background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; padding-bottom: 110px; color: #1e293b; }
+        :root { --primary: #0f172a; }
+        body { background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; padding-bottom: 110px; }
         .view { display: none; padding: 20px; max-width: 500px; margin: 0 auto; }
-        .view.active { display: block; animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .header-gradient { background: #0f172a; border-radius: 0 0 3.5rem 3.5rem; padding: 50px 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
-        .logo-container { width: 120px; height: 120px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; }
-        .logo-img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3)); }
-        
+        .view.active { display: block; }
+        .header-gradient { background: #0f172a; border-radius: 0 0 3rem 3rem; padding: 40px 20px; }
+        .logo-img { width: 130px; height: 130px; margin: 0 auto; object-fit: contain; display: block; }
         .glass-card { background: white; border-radius: 1.5rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 16px; padding: 20px; }
-        input, select { background: #f1f5f9; border-radius: 12px; padding: 14px; font-weight: 700; font-size: 14px; width: 100%; border: 2px solid transparent; }
-        input:focus { background: white; border-color: var(--primary); outline: none; }
-        
-        .btn-primary { background: var(--primary); color: white; border-radius: 12px; padding: 16px; font-weight: 800; text-transform: uppercase; width: 100%; transition: 0.3s; }
-        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; height: 85px; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #e2e8f0; z-index: 100; }
-        .nav-item { color: #94a3b8; font-size: 10px; font-weight: 800; text-transform: uppercase; display: flex; flex-direction: column; align-items: center; }
+        input, select { background: #f1f5f9; border-radius: 12px; padding: 14px; font-weight: 700; width: 100%; border: none; }
+        .btn-primary { background: var(--primary); color: white; border-radius: 12px; padding: 16px; font-weight: 800; width: 100%; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; height: 85px; display: flex; justify-content: space-around; items-center; border-top: 1px solid #e2e8f0; }
+        .nav-item { color: #94a3b8; font-size: 10px; font-weight: 800; text-align: center; }
         .nav-item.active { color: var(--primary); }
-        .nav-icon { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 14px; font-size: 20px; }
-        .active .nav-icon { background: var(--primary); color: white; }
     </style>
 </head>
 <body>
 
     <header class="header-gradient text-center">
-        <div class="logo-container">
-            <img src="logo.png" onerror="this.src='https://ui-avatars.com/api/?name=Eureka&background=0f172a&color=fff&size=128'" class="logo-img">
-        </div>
-        <h1 class="text-white text-2xl font-extrabold italic tracking-tight">EUREKA! LAB</h1>
-        <p class="text-slate-500 text-[10px] font-bold uppercase tracking-[4px]">Management System v12.0</p>
+        <img src="logo.png" class="logo-img" alt="Eureka Logo">
+        <h1 class="text-white text-xl font-black italic mt-2">EUREKA! LAB</h1>
     </header>
 
     <main id="view-quote" class="view active -mt-8">
         <div class="glass-card">
-            <label class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-2 block">Cliente</label>
+            <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Cliente</label>
             <select id="q-client-select" onchange="handleClientAction(this.value)"></select>
         </div>
 
         <div class="glass-card border-t-4 border-t-slate-900">
             <input type="text" id="i-desc" placeholder="Descripción del producto..." class="mb-4">
             <div class="grid grid-cols-3 gap-3 mb-4">
-                <input type="number" id="i-qty" value="1" class="text-center" placeholder="Cant">
+                <input type="number" id="i-qty" value="1" class="text-center">
                 <input type="number" id="i-price" placeholder="Precio $">
-                <input type="number" id="i-disc" value="0" class="text-red-600 bg-red-50 text-center" placeholder="Desc%">
+                <input type="number" id="i-disc" value="0" class="text-red-600 bg-red-50 text-center">
             </div>
-            <div class="flex gap-3">
-                <button id="btn-img" onclick="document.getElementById('file-input').click()" class="bg-slate-100 text-slate-500 px-4 rounded-xl text-lg border-2 border-dashed border-slate-300">📷</button>
-                <button onclick="addItem()" class="btn-primary">+ Añadir</button>
-            </div>
-            <input type="file" id="file-input" class="hidden" accept="image/*" onchange="handleImg(this)">
+            <button onclick="addItem()" class="btn-primary">+ Añadir Item</button>
         </div>
 
         <div id="items-list" class="space-y-3 mb-6"></div>
 
-        <div class="bg-slate-900 rounded-[2rem] p-8 text-center shadow-2xl">
-            <div id="display-total" class="text-5xl font-black text-white tracking-tighter mb-6">$0</div>
-            <button onclick="saveAndPDF()" class="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest shadow-lg">Generar y Abrir PDF</button>
+        <div class="bg-slate-900 rounded-[2rem] p-6 text-center">
+            <div id="display-total" class="text-5xl font-black text-white mb-6">$0</div>
+            <button onclick="saveAndPDF()" class="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black uppercase shadow-lg">Generar Folio y PDF</button>
         </div>
     </main>
 
     <main id="view-history" class="view -mt-8">
-        <input type="text" id="search-history" oninput="renderHistory()" placeholder="🔍 Buscar..." class="glass-card w-full mb-4">
         <div id="history-list" class="space-y-3"></div>
     </main>
 
-    <main id="view-clients" class="view -mt-8">
-        <div class="flex justify-between items-center mb-4 px-2">
-            <h2 class="font-black uppercase text-xs tracking-widest text-slate-400">Clientes</h2>
-            <button onclick="handleClientAction('NEW')" class="text-primary font-extrabold text-xs">+ NUEVO</button>
-        </div>
-        <div id="clients-list" class="space-y-2"></div>
-    </main>
-
     <nav class="nav-bar">
-        <button onclick="switchView('quote')" id="nav-quote" class="nav-item active"><div class="nav-icon">🧮</div><span>Cotizar</span></button>
-        <button onclick="switchView('history')" id="nav-history" class="nav-item"><div class="nav-icon">📋</div><span>Historial</span></button>
-        <button onclick="switchView('clients')" id="nav-clients" class="nav-item"><div class="nav-icon">👥</div><span>Clientes</span></button>
+        <button onclick="switchView('quote')" id="nav-quote" class="nav-item active">🧮<br>Cotizar</button>
+        <button onclick="switchView('history')" id="nav-history" class="nav-item">📋<br>Historial</button>
     </nav>
 
     <script>
-        let items = [], tempImg = null;
+        let items = [];
 
         function switchView(v) {
             document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
             document.getElementById('view-'+v).classList.add('active');
             document.getElementById('nav-'+v).classList.add('active');
-            window.scrollTo(0,0);
         }
 
         function renderClientSelect() {
             const s = document.getElementById('q-client-select');
-            let html = '<option value="">-- SELECCIONAR CLIENTE --</option><option value="NEW">+ REGISTRAR NUEVO</option>';
+            let html = '<option value="">-- SELECCIONAR CLIENTE --</option><option value="NEW">+ NUEVO CLIENTE</option>';
             if(window.clientesData) window.clientesData.forEach(c => html += `<option value="${c.name}">${c.name}</option>`);
             s.innerHTML = html;
         }
@@ -142,42 +116,23 @@
         async function handleClientAction(val) {
             if (val === "NEW") {
                 const n = prompt("Nombre del cliente:");
-                if (n) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), { name: n.toUpperCase().trim() });
-                document.getElementById('q-client-select').value = "";
-            }
-        }
-
-        function handleImg(i) {
-            if (i.files && i.files[0]) {
-                const r = new FileReader();
-                r.onload = (e) => { tempImg = e.target.result; document.getElementById('btn-img').innerHTML = "✅"; };
-                r.readAsDataURL(i.files[0]);
+                if (n) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), { name: n.toUpperCase() });
             }
         }
 
         function addItem() {
             const d = document.getElementById('i-desc').value, q = Number(document.getElementById('i-qty').value), p = Number(document.getElementById('i-price').value), ds = Number(document.getElementById('i-disc').value);
-            if (!d || q<=0 || p<=0) return alert("Datos incompletos");
-            items.push({ desc: d.toUpperCase(), qty: q, price: p, disc: ds, total: Math.round((q*p)*(1-(ds/100))), img: tempImg });
-            document.getElementById('i-desc').value = ""; document.getElementById('i-price').value = ""; tempImg = null;
-            document.getElementById('btn-img').innerHTML = "📷";
+            if (!d || p<=0) return alert("Faltan datos");
+            items.push({ desc: d.toUpperCase(), qty: q, price: p, disc: ds, total: Math.round((q*p)*(1-(ds/100))) });
+            document.getElementById('i-desc').value = ""; document.getElementById('i-price').value = "";
             renderItems();
         }
 
         function renderItems() {
             document.getElementById('items-list').innerHTML = items.map((it, i) => `
-                <div class="glass-card !p-4 flex justify-between items-center shadow-sm">
-                    <div class="flex items-center gap-3">
-                        <img src="${it.img || 'https://via.placeholder.com/50'}" class="w-10 h-10 rounded-lg object-cover">
-                        <div>
-                            <div class="text-[11px] font-extrabold uppercase">${it.desc}</div>
-                            <div class="text-[9px] font-bold text-slate-400">${it.qty} x $${it.price.toLocaleString()}</div>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="font-extrabold text-sm">$${it.total.toLocaleString()}</span>
-                        <button onclick="items.splice(${i},1);renderItems();" class="text-slate-300 p-2">✕</button>
-                    </div>
+                <div class="glass-card flex justify-between items-center">
+                    <div><b>${it.desc}</b><br><small>${it.qty} x $${it.price.toLocaleString()}</small></div>
+                    <div class="flex items-center gap-3"><b>$${it.total.toLocaleString()}</b><button onclick="items.splice(${i},1);renderItems();">✕</button></div>
                 </div>`).join('');
             document.getElementById('display-total').innerText = '$' + items.reduce((s, i) => s + i.total, 0).toLocaleString();
         }
@@ -185,12 +140,21 @@
         async function saveAndPDF() {
             const client = document.getElementById('q-client-select').value;
             if (!client || items.length === 0) return alert("Faltan datos");
-            const suffix = prompt("Descripción Folio:");
-            if (!suffix) return;
-            const folio = `COT_EUREKALAB_${window.lastFolio} - ${suffix.toUpperCase()}`;
-            const data = { folio: window.lastFolio, folioCode: folio, client, total: items.reduce((s, i) => s + i.total, 0), date: new Date().toLocaleDateString('es-CL'), items };
             
-            await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), { ...data, items: items.map(it => ({...it, img:null})) });
+            const descFolio = prompt("Descripción de la cotización (correlativa):");
+            if (!descFolio) return;
+
+            const folio = `COT_EUREKALAB_${window.lastFolio} - ${descFolio.toUpperCase()}`;
+            const data = { 
+                folio: window.lastFolio, 
+                folioCode: folio, 
+                client, 
+                total: items.reduce((s, i) => s + i.total, 0), 
+                date: new Date().toLocaleDateString('es-CL'), 
+                items 
+            };
+
+            await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), { ...data });
             await fb.updateDoc(fb.doc(fb.db, "config", "eureka_erp_v10"), { lastFolio: fb.increment(1) });
             
             generatePDF(data);
@@ -201,53 +165,39 @@
             const el = document.createElement('div');
             el.style.padding = '40px';
             el.innerHTML = `
-                <div style="border-bottom: 5px solid #0f172a; padding-bottom: 20px; margin-bottom: 20px">
-                    <h1 style="margin:0; font-size: 30px">EUREKA! LAB</h1>
-                    <p>${data.folioCode}</p>
-                </div>
+                <h1 style="color:#0f172a">EUREKA! LAB</h1>
+                <p><b>FOLIO:</b> ${data.folioCode}</p>
                 <p><b>CLIENTE:</b> ${data.client} | <b>FECHA:</b> ${data.date}</p>
-                <table style="width:100%; border-collapse:collapse; margin-top:20px">
-                    <tr style="background:#0f172a; color:white"><th style="padding:10px; text-align:left">ITEM</th><th style="text-align:right; padding:10px">TOTAL</th></tr>
-                    ${data.items.map(i => `<tr><td style="padding:10px; border-bottom:1px solid #eee">${i.desc} (x${i.qty})</td><td style="text-align:right; padding:10px; border-bottom:1px solid #eee">$${i.total.toLocaleString()}</td></tr>`).join('')}
+                <hr>
+                <table style="width:100%; margin-top:20px">
+                    ${data.items.map(i => `<tr><td>${i.desc} (x${i.qty})</td><td style="text-align:right">$${i.total.toLocaleString()}</td></tr>`).join('')}
                 </table>
                 <h2 style="text-align:right; margin-top:30px">TOTAL: $${data.total.toLocaleString()}</h2>`;
             
-            html2pdf().from(el).set({ margin: 10, filename: data.folioCode+'.pdf' }).toPdf().get('pdf').then(pdf => {
-                window.open(pdf.output('bloburl'), '_blank');
-            }).save();
+            html2pdf().from(el).set({ margin: 10, filename: data.folioCode + '.pdf' }).save();
         }
 
         function renderHistory() {
-            const search = document.getElementById('search-history').value.toUpperCase();
-            document.getElementById('history-list').innerHTML = window.historialData.filter(c => c.client.includes(search) || c.folioCode.includes(search)).map(c => `
-                <div class="glass-card !p-5 border-l-[8px] border-l-slate-900">
-                    <div class="flex justify-between text-[10px] font-extrabold text-slate-400 uppercase mb-1">
+            document.getElementById('history-list').innerHTML = window.historialData.map(c => `
+                <div class="glass-card border-l-8 border-l-slate-900">
+                    <div class="flex justify-between text-[10px] font-bold text-slate-400 mb-1">
                         <span>#${c.folio} | ${c.date}</span>
                         <span class="text-slate-900">$${c.total.toLocaleString()}</span>
                     </div>
-                    <div class="text-[13px] font-extrabold uppercase italic mb-2">${c.client}</div>
-                    <div class="flex gap-2">
-                        <button onclick="loadQuote('${c.folioCode}')" class="bg-slate-100 text-[9px] font-bold px-3 py-1 rounded-lg uppercase tracking-widest text-slate-600">Reutilizar Datos</button>
-                    </div>
+                    <div class="font-bold uppercase mb-2">${c.client}</div>
+                    <button onclick="loadForEdit('${c.folioCode}')" class="text-[10px] bg-slate-100 px-3 py-1 rounded-lg font-bold">RE-EDITAR ESTA COTIZACIÓN</button>
                 </div>`).join('');
         }
 
-        async function loadQuote(code) {
+        function loadForEdit(code) {
             const q = window.historialData.find(x => x.folioCode === code);
-            if(q && confirm("¿Cargar estos datos en el editor para una nueva cotización?")) {
+            if(q) {
                 items = [...q.items];
                 document.getElementById('q-client-select').value = q.client;
                 renderItems();
                 switchView('quote');
+                alert("Cotización cargada. Puedes modificarla y al finalizar se generará un NUEVO correlativo.");
             }
-        }
-
-        function renderClientsList() {
-            document.getElementById('clients-list').innerHTML = window.clientesData.map(c => `
-                <div class="glass-card p-4 flex justify-between items-center">
-                    <span class="font-bold text-xs uppercase">${c.name}</span>
-                    <button onclick="fb.deleteDoc(fb.doc(fb.db, 'erp_clientes', '${c.id}'))" class="text-red-400 font-bold p-2">✕</button>
-                </div>`).join('');
         }
     </script>
 </body>
