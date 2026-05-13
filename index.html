@@ -2,201 +2,243 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Eureka! ERP Pro v12.5</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eureka! Lab - Editor Profesional v13</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, increment, collection, addDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, increment, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         
         const firebaseConfig = {
-          apiKey: "AIzaSyCtlfBJ0QHOMhEDPRAXHL9nRFswnr49rik",
-          authDomain: "registro-de-gastos-a21e8.firebaseapp.com",
-          projectId: "registro-de-gastos-a21e8",
-          storageBucket: "registro-de-gastos-a21e8.firebasestorage.app",
-          messagingSenderId: "947355933583",
-          appId: "1:947355933583:web:0231b493d8b794cc3b49fa"
+            apiKey: "AIzaSyCtlfBJ0QHOMhEDPRAXHL9nRFswnr49rik",
+            authDomain: "registro-de-gastos-a21e8.firebaseapp.com",
+            projectId: "registro-de-gastos-a21e8",
+            storageBucket: "registro-de-gastos-a21e8.firebasestorage.app",
+            messagingSenderId: "947355933583",
+            appId: "1:947355933583:web:0231b493d8b794cc3b49fa"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        window.fb = { db, doc, updateDoc, increment, collection, addDoc, deleteDoc, getDoc };
-        
+        window.fb = { db, doc, updateDoc, increment, collection, addDoc };
+
+        // Sincronizar Folio y Clientes
         onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
             window.lastFolio = d.exists() ? d.data().lastFolio : 1000;
+            updatePreview();
         });
 
         onSnapshot(collection(db, "erp_clientes"), (s) => {
-            window.clientesData = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.name.localeCompare(b.name));
-            renderClientSelect();
-            renderClientsList();
-        });
-
-        onSnapshot(collection(db, "erp_cotizaciones"), (s) => {
-            window.historialData = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => b.folio - a.folio);
-            renderHistory();
+            const select = document.getElementById('q-client');
+            let html = '<option value="">Seleccionar Cliente</option>';
+            s.docs.forEach(doc => html += `<option value="${doc.data().name}">${doc.data().name}</option>`);
+            select.innerHTML = html;
         });
     </script>
 
     <style>
-        :root { --primary: #0f172a; }
-        body { background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; padding-bottom: 110px; }
-        .view { display: none; padding: 20px; max-width: 500px; margin: 0 auto; }
-        .view.active { display: block; }
-        .header-gradient { background: #0f172a; border-radius: 0 0 3rem 3rem; padding: 40px 20px; }
-        .logo-img { width: 130px; height: 130px; margin: 0 auto; object-fit: contain; display: block; }
-        .glass-card { background: white; border-radius: 1.5rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 16px; padding: 20px; }
-        input, select { background: #f1f5f9; border-radius: 12px; padding: 14px; font-weight: 700; width: 100%; border: none; }
-        .btn-primary { background: var(--primary); color: white; border-radius: 12px; padding: 16px; font-weight: 800; width: 100%; }
-        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; height: 85px; display: flex; justify-content: space-around; items-center; border-top: 1px solid #e2e8f0; }
-        .nav-item { color: #94a3b8; font-size: 10px; font-weight: 800; text-align: center; }
-        .nav-item.active { color: var(--primary); }
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: white; }
+        .paper { background: white; color: #1e293b; width: 210mm; min-height: 297mm; padding: 20mm; margin: auto; box-shadow: 0 0 50px rgba(0,0,0,0.5); transform: scale(0.6); transform-origin: top center; }
+        @media (min-width: 1024px) { .paper { transform: scale(0.85); } }
+        @media (min-width: 1400px) { .paper { transform: scale(1); } }
+        .input-field { background: #1e293b; border: 1px solid #334155; padding: 12px; border-radius: 8px; width: 100%; color: white; margin-bottom: 10px; }
+        .btn-add { background: #10b981; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
-<body>
+<body class="overflow-x-hidden">
 
-    <header class="header-gradient text-center">
-        <img src="logo.png" class="logo-img" alt="Eureka Logo">
-        <h1 class="text-white text-xl font-black italic mt-2">EUREKA! LAB</h1>
-    </header>
+    <div class="flex flex-col lg:flex-row min-h-screen">
+        <aside class="lg:w-1/3 p-6 bg-slate-900 border-r border-slate-800 overflow-y-auto h-screen sticky top-0 z-10">
+            <h2 class="text-2xl font-black mb-6 flex items-center gap-2">
+                <span class="bg-blue-600 p-2 rounded-lg">E!</span> EDITOR EN VIVO
+            </h2>
 
-    <main id="view-quote" class="view active -mt-8">
-        <div class="glass-card">
-            <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Cliente</label>
-            <select id="q-client-select" onchange="handleClientAction(this.value)"></select>
-        </div>
+            <div class="space-y-4">
+                <section>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Datos Generales</label>
+                    <select id="q-client" class="input-field mt-1" onchange="updatePreview()"></select>
+                    <input type="text" id="q-desc-folio" placeholder="Descripción del Folio (ej. Letrero Neón)" class="input-field" oninput="updatePreview()">
+                </section>
 
-        <div class="glass-card border-t-4 border-t-slate-900">
-            <input type="text" id="i-desc" placeholder="Descripción del producto..." class="mb-4">
-            <div class="grid grid-cols-3 gap-3 mb-4">
-                <input type="number" id="i-qty" value="1" class="text-center">
-                <input type="number" id="i-price" placeholder="Precio $">
-                <input type="number" id="i-disc" value="0" class="text-red-600 bg-red-50 text-center">
+                <section class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                    <label class="text-xs font-bold text-slate-400 uppercase">Añadir Producto</label>
+                    <input type="text" id="i-desc" placeholder="Producto/Servicio" class="input-field mt-2">
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="number" id="i-qty" value="1" placeholder="Cant" class="input-field">
+                        <input type="number" id="i-price" placeholder="Precio $" class="input-field">
+                        <input type="number" id="i-disc" value="0" placeholder="Desc %" class="input-field text-red-400">
+                    </div>
+                    <button onclick="addItem()" class="btn-add">AÑADIR A LA HOJA</button>
+                </section>
+
+                <div id="edit-list" class="space-y-2 mt-4"></div>
+
+                <button onclick="finalizeAndSave()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-black text-lg mt-6 shadow-xl shadow-blue-900/20 transition-all">
+                    GUARDAR Y DESCARGAR PDF
+                </button>
             </div>
-            <button onclick="addItem()" class="btn-primary">+ Añadir Item</button>
-        </div>
+        </aside>
 
-        <div id="items-list" class="space-y-3 mb-6"></div>
+        <main class="lg:w-2/3 p-4 bg-slate-950 flex justify-center items-start overflow-x-auto">
+            <div id="pdf-canvas" class="paper">
+                <div class="flex justify-between items-start border-b-8 border-slate-900 pb-8 mb-8">
+                    <div class="w-1/2">
+                        <img src="logo.png" onerror="this.src='https://ui-avatars.com/api/?name=Eureka&background=0f172a&color=fff&size=128'" class="w-32 mb-4">
+                        <h1 class="text-4xl font-black tracking-tighter">EUREKA! LAB</h1>
+                        <p class="text-sm font-bold text-slate-500">DISEÑO Y PRODUCCIÓN INDUSTRIAL</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="bg-slate-900 text-white p-4 rounded-bl-3xl">
+                            <p class="text-xs font-bold uppercase tracking-widest opacity-50">Cotización Correlativa</p>
+                            <h3 id="prev-folio" class="text-xl font-black italic">--</h3>
+                        </div>
+                        <p class="mt-4 text-sm"><b>Fecha:</b> <span id="prev-date">--/--/--</span></p>
+                        <p class="text-sm"><b>Cliente:</b> <span id="prev-client" class="font-bold">--</span></p>
+                    </div>
+                </div>
 
-        <div class="bg-slate-900 rounded-[2rem] p-6 text-center">
-            <div id="display-total" class="text-5xl font-black text-white mb-6">$0</div>
-            <button onclick="saveAndPDF()" class="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black uppercase shadow-lg">Generar Folio y PDF</button>
-        </div>
-    </main>
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="bg-slate-100 uppercase text-[10px] font-black tracking-widest text-slate-500">
+                            <th class="p-4">Descripción</th>
+                            <th class="p-4 text-center">Cant</th>
+                            <th class="p-4 text-right">Precio</th>
+                            <th class="p-4 text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="prev-items"></tbody>
+                </table>
 
-    <main id="view-history" class="view -mt-8">
-        <div id="history-list" class="space-y-3"></div>
-    </main>
+                <div class="mt-12 flex justify-end">
+                    <div class="w-1/2 space-y-2 border-t-2 border-slate-100 pt-4">
+                        <div class="flex justify-between text-slate-400">
+                            <span>Subtotal Bruto:</span>
+                            <span id="prev-subtotal">$0</span>
+                        </div>
+                        <div class="flex justify-between text-2xl font-black text-slate-900 border-t border-slate-100 pt-2">
+                            <span>Total Neto:</span>
+                            <span id="prev-total">$0</span>
+                        </div>
+                    </div>
+                </div>
 
-    <nav class="nav-bar">
-        <button onclick="switchView('quote')" id="nav-quote" class="nav-item active">🧮<br>Cotizar</button>
-        <button onclick="switchView('history')" id="nav-history" class="nav-item">📋<br>Historial</button>
-    </nav>
+                <div class="mt-20 border-t border-slate-100 pt-8 text-[10px] text-slate-400 leading-relaxed text-center italic">
+                    Esta cotización tiene una validez de 15 días. Precios sujetos a cambios según requerimientos adicionales.
+                </div>
+            </div>
+        </main>
+    </div>
 
     <script>
         let items = [];
+        const dateStr = new Date().toLocaleDateString('es-CL');
 
-        function switchView(v) {
-            document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
-            document.getElementById('view-'+v).classList.add('active');
-            document.getElementById('nav-'+v).classList.add('active');
-        }
+        function updatePreview() {
+            document.getElementById('prev-date').innerText = dateStr;
+            document.getElementById('prev-client').innerText = document.getElementById('q-client').value || '--';
+            
+            const desc = document.getElementById('q-desc-folio').value || 'NUEVA COTIZACIÓN';
+            document.getElementById('prev-folio').innerText = `FOLIO: ${window.lastFolio || '1000'} / ${desc.toUpperCase()}`;
 
-        function renderClientSelect() {
-            const s = document.getElementById('q-client-select');
-            let html = '<option value="">-- SELECCIONAR CLIENTE --</option><option value="NEW">+ NUEVO CLIENTE</option>';
-            if(window.clientesData) window.clientesData.forEach(c => html += `<option value="${c.name}">${c.name}</option>`);
-            s.innerHTML = html;
-        }
+            const tbody = document.getElementById('prev-items');
+            tbody.innerHTML = '';
+            let total = 0;
 
-        async function handleClientAction(val) {
-            if (val === "NEW") {
-                const n = prompt("Nombre del cliente:");
-                if (n) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), { name: n.toUpperCase() });
-            }
+            items.forEach((it, idx) => {
+                const row = document.createElement('tr');
+                row.className = "border-b border-slate-50 text-sm";
+                row.innerHTML = `
+                    <td class="p-4 font-bold">${it.desc}</td>
+                    <td class="p-4 text-center">${it.qty}</td>
+                    <td class="p-4 text-right">$${it.price.toLocaleString()}</td>
+                    <td class="p-4 text-right font-black">$${it.total.toLocaleString()}</td>
+                `;
+                tbody.appendChild(row);
+                total += it.total;
+            });
+
+            document.getElementById('prev-subtotal').innerText = '$' + total.toLocaleString();
+            document.getElementById('prev-total').innerText = '$' + total.toLocaleString();
+            renderEditList();
         }
 
         function addItem() {
-            const d = document.getElementById('i-desc').value, q = Number(document.getElementById('i-qty').value), p = Number(document.getElementById('i-price').value), ds = Number(document.getElementById('i-disc').value);
-            if (!d || p<=0) return alert("Faltan datos");
-            items.push({ desc: d.toUpperCase(), qty: q, price: p, disc: ds, total: Math.round((q*p)*(1-(ds/100))) });
-            document.getElementById('i-desc').value = ""; document.getElementById('i-price').value = "";
-            renderItems();
-        }
+            const d = document.getElementById('i-desc').value.toUpperCase();
+            const q = Number(document.getElementById('i-qty').value);
+            const p = Number(document.getElementById('i-price').value);
+            const ds = Number(document.getElementById('i-disc').value);
 
-        function renderItems() {
-            document.getElementById('items-list').innerHTML = items.map((it, i) => `
-                <div class="glass-card flex justify-between items-center">
-                    <div><b>${it.desc}</b><br><small>${it.qty} x $${it.price.toLocaleString()}</small></div>
-                    <div class="flex items-center gap-3"><b>$${it.total.toLocaleString()}</b><button onclick="items.splice(${i},1);renderItems();">✕</button></div>
-                </div>`).join('');
-            document.getElementById('display-total').innerText = '$' + items.reduce((s, i) => s + i.total, 0).toLocaleString();
-        }
+            if(!d || p <= 0) return alert("Faltan datos del producto");
 
-        async function saveAndPDF() {
-            const client = document.getElementById('q-client-select').value;
-            if (!client || items.length === 0) return alert("Faltan datos");
+            const total = Math.round((q * p) * (1 - (ds/100)));
+            items.push({ desc: d, qty: q, price: p, disc: ds, total });
             
-            const descFolio = prompt("Descripción de la cotización (correlativa):");
-            if (!descFolio) return;
-
-            const folio = `COT_EUREKALAB_${window.lastFolio} - ${descFolio.toUpperCase()}`;
-            const data = { 
-                folio: window.lastFolio, 
-                folioCode: folio, 
-                client, 
-                total: items.reduce((s, i) => s + i.total, 0), 
-                date: new Date().toLocaleDateString('es-CL'), 
-                items 
-            };
-
-            await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), { ...data });
-            await fb.updateDoc(fb.doc(fb.db, "config", "eureka_erp_v10"), { lastFolio: fb.increment(1) });
-            
-            generatePDF(data);
-            items = []; renderItems();
+            document.getElementById('i-desc').value = '';
+            document.getElementById('i-price').value = '';
+            updatePreview();
         }
 
-        function generatePDF(data) {
-            const el = document.createElement('div');
-            el.style.padding = '40px';
-            el.innerHTML = `
-                <h1 style="color:#0f172a">EUREKA! LAB</h1>
-                <p><b>FOLIO:</b> ${data.folioCode}</p>
-                <p><b>CLIENTE:</b> ${data.client} | <b>FECHA:</b> ${data.date}</p>
-                <hr>
-                <table style="width:100%; margin-top:20px">
-                    ${data.items.map(i => `<tr><td>${i.desc} (x${i.qty})</td><td style="text-align:right">$${i.total.toLocaleString()}</td></tr>`).join('')}
-                </table>
-                <h2 style="text-align:right; margin-top:30px">TOTAL: $${data.total.toLocaleString()}</h2>`;
-            
-            html2pdf().from(el).set({ margin: 10, filename: data.folioCode + '.pdf' }).save();
+        function renderEditList() {
+            const list = document.getElementById('edit-list');
+            list.innerHTML = items.map((it, i) => `
+                <div class="flex justify-between items-center bg-slate-800 p-3 rounded-lg text-xs">
+                    <span class="font-bold truncate w-2/3">${it.desc}</span>
+                    <button onclick="removeItem(${i})" class="text-red-400 font-black">QUITAR</button>
+                </div>
+            `).join('');
         }
 
-        function renderHistory() {
-            document.getElementById('history-list').innerHTML = window.historialData.map(c => `
-                <div class="glass-card border-l-8 border-l-slate-900">
-                    <div class="flex justify-between text-[10px] font-bold text-slate-400 mb-1">
-                        <span>#${c.folio} | ${c.date}</span>
-                        <span class="text-slate-900">$${c.total.toLocaleString()}</span>
-                    </div>
-                    <div class="font-bold uppercase mb-2">${c.client}</div>
-                    <button onclick="loadForEdit('${c.folioCode}')" class="text-[10px] bg-slate-100 px-3 py-1 rounded-lg font-bold">RE-EDITAR ESTA COTIZACIÓN</button>
-                </div>`).join('');
+        function removeItem(idx) {
+            items.splice(idx, 1);
+            updatePreview();
         }
 
-        function loadForEdit(code) {
-            const q = window.historialData.find(x => x.folioCode === code);
-            if(q) {
-                items = [...q.items];
-                document.getElementById('q-client-select').value = q.client;
-                renderItems();
-                switchView('quote');
-                alert("Cotización cargada. Puedes modificarla y al finalizar se generará un NUEVO correlativo.");
+        async function finalizeAndSave() {
+            const client = document.getElementById('q-client').value;
+            const descFolio = document.getElementById('q-desc-folio').value;
+
+            if(!client || items.length === 0 || !descFolio) {
+                return alert("Por favor selecciona un cliente, agrega ítems y escribe la descripción del folio.");
+            }
+
+            const total = items.reduce((s, i) => s + i.total, 0);
+            const folioCode = `FOLIO: ${window.lastFolio} / ${descFolio.toUpperCase()}`;
+
+            if(confirm(`¿Guardar Cotización ${folioCode}?`)) {
+                // 1. Guardar en Firebase
+                await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), {
+                    folio: window.lastFolio,
+                    folioCode: folioCode,
+                    client: client,
+                    total: total,
+                    date: dateStr,
+                    items: items,
+                    createdAt: new Date()
+                });
+
+                // 2. Incrementar Folio
+                await fb.updateDoc(fb.doc(fb.db, "config", "eureka_erp_v10"), {
+                    lastFolio: fb.increment(1)
+                });
+
+                // 3. Generar PDF
+                const element = document.getElementById('pdf-canvas');
+                html2pdf().from(element).set({
+                    margin: 0,
+                    filename: `${folioCode}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 3, letterRendering: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                }).save();
+
+                // 4. Limpiar
+                items = [];
+                document.getElementById('q-desc-folio').value = '';
+                updatePreview();
+                alert("¡Cotización guardada y folio incrementado!");
             }
         }
     </script>
