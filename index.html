@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eureka! Lab - Editor Profesional v13</title>
+    <title>Eureka! Lab ERP v14 - Master</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, increment, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, increment, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyCtlfBJ0QHOMhEDPRAXHL9nRFswnr49rik",
@@ -25,221 +24,207 @@
         const db = getFirestore(app);
         window.fb = { db, doc, updateDoc, increment, collection, addDoc };
 
-        // Sincronizar Folio y Clientes
+        // Recuperar Correlativo
         onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
             window.lastFolio = d.exists() ? d.data().lastFolio : 1000;
-            updatePreview();
+            renderPreview();
         });
 
+        // Recuperar Clientes
         onSnapshot(collection(db, "erp_clientes"), (s) => {
-            const select = document.getElementById('q-client');
-            let html = '<option value="">Seleccionar Cliente</option>';
-            s.docs.forEach(doc => html += `<option value="${doc.data().name}">${doc.data().name}</option>`);
-            select.innerHTML = html;
+            window.clientesData = s.docs.map(d => d.data().name);
+            const sel = document.getElementById('q-client');
+            sel.innerHTML = '<option value="">Seleccionar Cliente</option><option value="NEW">+ Nuevo Cliente</option>';
+            window.clientesData.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+        });
+
+        // Recuperar Historial
+        onSnapshot(collection(db, "erp_cotizaciones"), (s) => {
+            window.historial = s.docs.map(d => d.data()).sort((a,b) => b.folio - a.folio);
+            renderHistory();
         });
     </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: white; }
-        .paper { background: white; color: #1e293b; width: 210mm; min-height: 297mm; padding: 20mm; margin: auto; box-shadow: 0 0 50px rgba(0,0,0,0.5); transform: scale(0.6); transform-origin: top center; }
-        @media (min-width: 1024px) { .paper { transform: scale(0.85); } }
-        @media (min-width: 1400px) { .paper { transform: scale(1); } }
-        .input-field { background: #1e293b; border: 1px solid #334155; padding: 12px; border-radius: 8px; width: 100%; color: white; margin-bottom: 10px; }
-        .btn-add { background: #10b981; padding: 12px; border-radius: 8px; width: 100%; font-weight: bold; margin-top: 10px; }
+        body { background: #0f172a; color: white; font-family: sans-serif; }
+        .canvas-pdf { background: white; color: #334; width: 210mm; min-height: 297mm; padding: 15mm; margin: auto; transform: scale(0.5); transform-origin: top center; box-shadow: 0 0 40px rgba(0,0,0,0.5); }
+        @media (min-width: 1024px) { .canvas-pdf { transform: scale(0.8); } }
+        .input-dark { background: #1e293b; border: 1px solid #334155; padding: 10px; border-radius: 8px; width: 100%; color: white; }
+        .btn-nav { padding: 10px; flex: 1; text-align: center; font-weight: bold; font-size: 12px; }
+        .active-nav { border-bottom: 3px solid #3b82f6; color: #3b82f6; }
     </style>
 </head>
-<body class="overflow-x-hidden">
+<body>
 
-    <div class="flex flex-col lg:flex-row min-h-screen">
-        <aside class="lg:w-1/3 p-6 bg-slate-900 border-r border-slate-800 overflow-y-auto h-screen sticky top-0 z-10">
-            <h2 class="text-2xl font-black mb-6 flex items-center gap-2">
-                <span class="bg-blue-600 p-2 rounded-lg">E!</span> EDITOR EN VIVO
-            </h2>
+    <div class="flex flex-col lg:flex-row h-screen">
+        <aside class="lg:w-1/3 bg-slate-900 border-r border-slate-800 flex flex-col">
+            <nav class="flex border-b border-slate-800">
+                <button onclick="setTab('edit')" id="tab-edit" class="btn-nav active-nav">EDITOR</button>
+                <button onclick="setTab('hist')" id="tab-hist" class="btn-nav">HISTORIAL</button>
+            </nav>
 
-            <div class="space-y-4">
-                <section>
-                    <label class="text-xs font-bold text-slate-500 uppercase">Datos Generales</label>
-                    <select id="q-client" class="input-field mt-1" onchange="updatePreview()"></select>
-                    <input type="text" id="q-desc-folio" placeholder="Descripción del Folio (ej. Letrero Neón)" class="input-field" oninput="updatePreview()">
-                </section>
+            <div id="panel-edit" class="p-6 overflow-y-auto flex-1">
+                <div class="space-y-4">
+                    <img src="logo.png" class="h-12 mx-auto mb-4" onerror="this.style.display='none'">
+                    
+                    <select id="q-client" class="input-dark" onchange="if(this.value==='NEW') addClient(); renderPreview();"></select>
+                    <input type="text" id="q-desc-folio" placeholder="Descripción: Ej. Letrero Neón" class="input-dark" oninput="renderPreview()">
 
-                <section class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                    <label class="text-xs font-bold text-slate-400 uppercase">Añadir Producto</label>
-                    <input type="text" id="i-desc" placeholder="Producto/Servicio" class="input-field mt-2">
-                    <div class="grid grid-cols-3 gap-2">
-                        <input type="number" id="i-qty" value="1" placeholder="Cant" class="input-field">
-                        <input type="number" id="i-price" placeholder="Precio $" class="input-field">
-                        <input type="number" id="i-disc" value="0" placeholder="Desc %" class="input-field text-red-400">
+                    <div class="bg-slate-800 p-4 rounded-xl space-y-3">
+                        <input type="text" id="i-desc" placeholder="Producto" class="input-dark">
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="number" id="i-qty" value="1" class="input-dark">
+                            <input type="number" id="i-price" placeholder="$ Precio" class="input-dark">
+                            <button onclick="document.getElementById('f-img').click()" id="btn-img" class="bg-slate-700 rounded-lg">📷</button>
+                        </div>
+                        <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
+                        <button onclick="addItem()" class="w-full bg-blue-600 py-2 rounded-lg font-bold">+ AÑADIR</button>
                     </div>
-                    <button onclick="addItem()" class="btn-add">AÑADIR A LA HOJA</button>
-                </section>
 
-                <div id="edit-list" class="space-y-2 mt-4"></div>
+                    <div id="list-items" class="space-y-2"></div>
+                    
+                    <button onclick="saveAll()" class="w-full bg-emerald-600 py-4 rounded-xl font-black text-lg shadow-lg">GUARDAR Y DESCARGAR PDF</button>
+                </div>
+            </div>
 
-                <button onclick="finalizeAndSave()" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-xl font-black text-lg mt-6 shadow-xl shadow-blue-900/20 transition-all">
-                    GUARDAR Y DESCARGAR PDF
-                </button>
+            <div id="panel-hist" class="p-6 overflow-y-auto flex-1 hidden">
+                <div id="hist-content" class="space-y-3"></div>
             </div>
         </aside>
 
-        <main class="lg:w-2/3 p-4 bg-slate-950 flex justify-center items-start overflow-x-auto">
-            <div id="pdf-canvas" class="paper">
-                <div class="flex justify-between items-start border-b-8 border-slate-900 pb-8 mb-8">
-                    <div class="w-1/2">
-                        <img src="logo.png" onerror="this.src='https://ui-avatars.com/api/?name=Eureka&background=0f172a&color=fff&size=128'" class="w-32 mb-4">
-                        <h1 class="text-4xl font-black tracking-tighter">EUREKA! LAB</h1>
-                        <p class="text-sm font-bold text-slate-500">DISEÑO Y PRODUCCIÓN INDUSTRIAL</p>
+        <main class="lg:w-2/3 bg-slate-950 overflow-y-auto p-4 flex justify-center">
+            <div id="pdf-area" class="canvas-pdf">
+                <div style="display:flex; justify-content:space-between; border-bottom:5px solid #0f172a; padding-bottom:20px; margin-bottom:20px">
+                    <div>
+                        <img src="logo.png" style="height:80px">
+                        <h1 style="font-size:28px; margin:0">EUREKA! LAB</h1>
+                        <p style="font-size:12px; color:#666">Diseño y Producción</p>
                     </div>
-                    <div class="text-right">
-                        <div class="bg-slate-900 text-white p-4 rounded-bl-3xl">
-                            <p class="text-xs font-bold uppercase tracking-widest opacity-50">Cotización Correlativa</p>
-                            <h3 id="prev-folio" class="text-xl font-black italic">--</h3>
+                    <div style="text-align:right">
+                        <div style="background:#0f172a; color:white; padding:10px; border-radius:0 0 0 20px">
+                            <p style="font-size:10px; margin:0">COTIZACIÓN CORRELATIVA</p>
+                            <h2 id="p-folio" style="margin:0; font-size:16px">COT_EUREKALAB-1000 - ...</h2>
                         </div>
-                        <p class="mt-4 text-sm"><b>Fecha:</b> <span id="prev-date">--/--/--</span></p>
-                        <p class="text-sm"><b>Cliente:</b> <span id="prev-client" class="font-bold">--</span></p>
+                        <p style="margin-top:10px; font-size:14px"><b>Fecha:</b> <span id="p-date"></span></p>
+                        <p style="font-size:14px"><b>Cliente:</b> <span id="p-client"></span></p>
                     </div>
                 </div>
 
-                <table class="w-full text-left">
+                <table style="width:100%; border-collapse:collapse">
                     <thead>
-                        <tr class="bg-slate-100 uppercase text-[10px] font-black tracking-widest text-slate-500">
-                            <th class="p-4">Descripción</th>
-                            <th class="p-4 text-center">Cant</th>
-                            <th class="p-4 text-right">Precio</th>
-                            <th class="p-4 text-right">Total</th>
+                        <tr style="background:#f4f4f5; font-size:12px">
+                            <th style="padding:10px; text-align:left">IMG</th>
+                            <th style="padding:10px; text-align:left">DESCRIPCIÓN</th>
+                            <th style="padding:10px; text-align:center">CANT</th>
+                            <th style="padding:10px; text-align:right">TOTAL</th>
                         </tr>
                     </thead>
-                    <tbody id="prev-items"></tbody>
+                    <tbody id="p-body"></tbody>
                 </table>
 
-                <div class="mt-12 flex justify-end">
-                    <div class="w-1/2 space-y-2 border-t-2 border-slate-100 pt-4">
-                        <div class="flex justify-between text-slate-400">
-                            <span>Subtotal Bruto:</span>
-                            <span id="prev-subtotal">$0</span>
-                        </div>
-                        <div class="flex justify-between text-2xl font-black text-slate-900 border-t border-slate-100 pt-2">
-                            <span>Total Neto:</span>
-                            <span id="prev-total">$0</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-20 border-t border-slate-100 pt-8 text-[10px] text-slate-400 leading-relaxed text-center italic">
-                    Esta cotización tiene una validez de 15 días. Precios sujetos a cambios según requerimientos adicionales.
+                <div style="margin-top:30px; text-align:right">
+                    <h2 style="font-size:35px; margin:0">TOTAL: <span id="p-total">$0</span></h2>
                 </div>
             </div>
         </main>
     </div>
 
     <script>
-        let items = [];
-        const dateStr = new Date().toLocaleDateString('es-CL');
+        let items = [], tempImg = null;
 
-        function updatePreview() {
-            document.getElementById('prev-date').innerText = dateStr;
-            document.getElementById('prev-client').innerText = document.getElementById('q-client').value || '--';
-            
-            const desc = document.getElementById('q-desc-folio').value || 'NUEVA COTIZACIÓN';
-            document.getElementById('prev-folio').innerText = `FOLIO: ${window.lastFolio || '1000'} / ${desc.toUpperCase()}`;
+        function setTab(t) {
+            document.getElementById('panel-edit').classList.toggle('hidden', t!=='edit');
+            document.getElementById('panel-hist').classList.toggle('hidden', t!=='hist');
+            document.getElementById('tab-edit').classList.toggle('active-nav', t==='edit');
+            document.getElementById('tab-hist').classList.toggle('active-nav', t==='hist');
+        }
 
-            const tbody = document.getElementById('prev-items');
-            tbody.innerHTML = '';
-            let total = 0;
+        async function addClient() {
+            const n = prompt("Nombre nuevo cliente:");
+            if(n) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), { name: n.toUpperCase() });
+        }
 
-            items.forEach((it, idx) => {
-                const row = document.createElement('tr');
-                row.className = "border-b border-slate-50 text-sm";
-                row.innerHTML = `
-                    <td class="p-4 font-bold">${it.desc}</td>
-                    <td class="p-4 text-center">${it.qty}</td>
-                    <td class="p-4 text-right">$${it.price.toLocaleString()}</td>
-                    <td class="p-4 text-right font-black">$${it.total.toLocaleString()}</td>
-                `;
-                tbody.appendChild(row);
-                total += it.total;
-            });
-
-            document.getElementById('prev-subtotal').innerText = '$' + total.toLocaleString();
-            document.getElementById('prev-total').innerText = '$' + total.toLocaleString();
-            renderEditList();
+        function handleImg(input) {
+            const reader = new FileReader();
+            reader.onload = e => { tempImg = e.target.result; document.getElementById('btn-img').innerHTML = "✅"; };
+            reader.readAsDataURL(input.files[0]);
         }
 
         function addItem() {
-            const d = document.getElementById('i-desc').value.toUpperCase();
-            const q = Number(document.getElementById('i-qty').value);
-            const p = Number(document.getElementById('i-price').value);
-            const ds = Number(document.getElementById('i-disc').value);
-
-            if(!d || p <= 0) return alert("Faltan datos del producto");
-
-            const total = Math.round((q * p) * (1 - (ds/100)));
-            items.push({ desc: d, qty: q, price: p, disc: ds, total });
-            
-            document.getElementById('i-desc').value = '';
-            document.getElementById('i-price').value = '';
-            updatePreview();
+            const desc = document.getElementById('i-desc').value;
+            const price = Number(document.getElementById('i-price').value);
+            const qty = Number(document.getElementById('i-qty').value);
+            if(!desc || price <= 0) return;
+            items.push({ desc: desc.toUpperCase(), price, qty, total: price * qty, img: tempImg });
+            document.getElementById('i-desc').value = ""; document.getElementById('i-price').value = "";
+            tempImg = null; document.getElementById('btn-img').innerHTML = "📷";
+            renderPreview();
         }
 
-        function renderEditList() {
-            const list = document.getElementById('edit-list');
-            list.innerHTML = items.map((it, i) => `
-                <div class="flex justify-between items-center bg-slate-800 p-3 rounded-lg text-xs">
-                    <span class="font-bold truncate w-2/3">${it.desc}</span>
-                    <button onclick="removeItem(${i})" class="text-red-400 font-black">QUITAR</button>
+        function renderPreview() {
+            document.getElementById('p-date').innerText = new Date().toLocaleDateString();
+            document.getElementById('p-client').innerText = document.getElementById('q-client').value || '---';
+            const d = document.getElementById('q-desc-folio').value || '---';
+            const folioStr = `COT_EUREKALAB-${window.lastFolio || 1000} - ${d.toUpperCase()}`;
+            document.getElementById('p-folio').innerText = folioStr;
+
+            const tbody = document.getElementById('p-body');
+            tbody.innerHTML = "";
+            let total = 0;
+            items.forEach((it, i) => {
+                total += it.total;
+                tbody.innerHTML += `
+                    <tr style="border-bottom:1px solid #eee">
+                        <td style="padding:10px"><img src="${it.img || ''}" style="width:40px; height:40px; object-fit:cover" onerror="this.style.display='none'"></td>
+                        <td style="padding:10px"><b>${it.desc}</b></td>
+                        <td style="padding:10px; text-align:center">${it.qty}</td>
+                        <td style="padding:10px; text-align:right">$${it.total.toLocaleString()}</td>
+                    </tr>`;
+            });
+            document.getElementById('p-total').innerText = `$${total.toLocaleString()}`;
+            
+            document.getElementById('list-items').innerHTML = items.map((it, i) => `
+                <div class="flex justify-between bg-slate-800 p-2 rounded text-xs">
+                    <span>${it.desc}</span>
+                    <button onclick="items.splice(${i},1); renderPreview();" class="text-red-400">✕</button>
+                </div>`).join('');
+        }
+
+        async function saveAll() {
+            const client = document.getElementById('q-client').value;
+            const desc = document.getElementById('q-desc-folio').value;
+            if(!client || !desc || items.length === 0) return alert("Completa cliente, descripción y productos");
+
+            const folioCode = `COT_EUREKALAB-${window.lastFolio} - ${desc.toUpperCase()}`;
+            
+            await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), {
+                folio: window.lastFolio,
+                folioCode,
+                client,
+                items: items.map(i => ({...i, img: null})), // No guardamos img en DB para no saturar
+                total: items.reduce((s,i) => s+i.total, 0),
+                date: new Date().toLocaleDateString()
+            });
+
+            await fb.updateDoc(fb.doc(fb.db, "config", "eureka_erp_v10"), { lastFolio: fb.increment(1) });
+
+            html2pdf().from(document.getElementById('pdf-area')).set({
+                margin: 0, filename: folioCode+'.pdf', html2canvas: { scale: 2 }
+            }).save();
+
+            items = []; document.getElementById('q-desc-folio').value = "";
+            renderPreview();
+            alert("Guardado y Folio actualizado");
+        }
+
+        function renderHistory() {
+            document.getElementById('hist-content').innerHTML = window.historial.map(h => `
+                <div class="bg-slate-800 p-3 rounded-lg border-l-4 border-blue-500">
+                    <p class="text-[10px] text-slate-400 font-bold">${h.folioCode}</p>
+                    <p class="font-bold text-sm">${h.client}</p>
+                    <p class="text-emerald-400 font-bold">$${h.total.toLocaleString()}</p>
                 </div>
             `).join('');
-        }
-
-        function removeItem(idx) {
-            items.splice(idx, 1);
-            updatePreview();
-        }
-
-        async function finalizeAndSave() {
-            const client = document.getElementById('q-client').value;
-            const descFolio = document.getElementById('q-desc-folio').value;
-
-            if(!client || items.length === 0 || !descFolio) {
-                return alert("Por favor selecciona un cliente, agrega ítems y escribe la descripción del folio.");
-            }
-
-            const total = items.reduce((s, i) => s + i.total, 0);
-            const folioCode = `FOLIO: ${window.lastFolio} / ${descFolio.toUpperCase()}`;
-
-            if(confirm(`¿Guardar Cotización ${folioCode}?`)) {
-                // 1. Guardar en Firebase
-                await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), {
-                    folio: window.lastFolio,
-                    folioCode: folioCode,
-                    client: client,
-                    total: total,
-                    date: dateStr,
-                    items: items,
-                    createdAt: new Date()
-                });
-
-                // 2. Incrementar Folio
-                await fb.updateDoc(fb.doc(fb.db, "config", "eureka_erp_v10"), {
-                    lastFolio: fb.increment(1)
-                });
-
-                // 3. Generar PDF
-                const element = document.getElementById('pdf-canvas');
-                html2pdf().from(element).set({
-                    margin: 0,
-                    filename: `${folioCode}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { scale: 3, letterRendering: true },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                }).save();
-
-                // 4. Limpiar
-                items = [];
-                document.getElementById('q-desc-folio').value = '';
-                updatePreview();
-                alert("¡Cotización guardada y folio incrementado!");
-            }
         }
     </script>
 </body>
