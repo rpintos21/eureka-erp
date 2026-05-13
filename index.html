@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Eureka! ERP Pro v10.7</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, increment, collection, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        
+        const firebaseConfig = {
+          apiKey: "AIzaSyCtlfBJ0QHOMhEDPRAXHL9nRFswnr49rik",
+          authDomain: "registro-de-gastos-a21e8.firebaseapp.com",
+          projectId: "registro-de-gastos-a21e8",
+          storageBucket: "registro-de-gastos-a21e8.firebasestorage.app",
+          messagingSenderId: "947355933583",
+          appId: "1:947355933583:web:0231b493d8b794cc3b49fa"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        window.fb = { db, doc, updateDoc, increment, collection, addDoc, deleteDoc };
+        
+        onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
+            window.lastFolio = d.exists() ? d.data().lastFolio : 1000;
+        });
+
+        onSnapshot(collection(db, "erp_clientes"), (s) => {
+            window.clientesData = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.name.localeCompare(b.name));
+            renderClientSelect();
+            renderClientsList();
+        });
+
+        onSnapshot(collection(db, "erp_cotizaciones"), (s) => {
+            window.historialData = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => b.folio - a.folio);
+            renderHistory();
+        });
+    </script>
+    <style>
+        body { background-color: #f1f5f9; padding-bottom: 120px; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .view { display: none; }
+        .view.active { display: block; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .nav-active { color: #0f172a !important; font-weight: 900; }
+        .nav-active .icon-circle { background: #0f172a; color: white; transform: scale(1.1); }
+        .glass-card { background: white; border-radius: 2rem; box-shadow: 0 4px 15px -1px rgba(0,0,0,0.05); }
+        input, select { outline: none !important; border: none !important; }
+    </style>
+</head>
+<body>
+
+    <header class="bg-slate-900 text-white pt-10 pb-16 text-center rounded-b-[4rem] shadow-2xl">
+        <div class="flex flex-col items-center">
+            <img src="logo.png" onerror="this.src='https://ui-avatars.com/api/?name=E!&background=fff&color=0f172a&size=128&bold=true'" class="h-16 w-16 rounded-2xl mb-2 shadow-xl bg-white object-contain">
+            <h1 class="text-2xl font-black uppercase tracking-tighter italic">Eureka! Lab</h1>
+            <p class="text-[9px] font-bold opacity-40 uppercase tracking-widest mt-1">Management Pro v10.7</p>
+        </div>
+    </header>
+
+    <main id="view-quote" class="view active p-4 max-w-lg mx-auto space-y-4 -mt-10">
+        <div class="glass-card p-5">
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2 block mb-1">Cliente</label>
+            <select id="q-client-select" onchange="handleClientAction(this.value)" class="w-full p-4 rounded-2xl bg-slate-50 font-bold text-slate-800 shadow-inner">
+                <option value="">Cargando Base de Datos...</option>
+            </select>
+        </div>
+
+        <div class="glass-card p-6 space-y-4 border-t-[10px] border-slate-900">
+            <input type="text" id="i-desc" placeholder="Descripción del trabajo..." class="w-full p-4 rounded-2xl bg-slate-50 font-bold">
+            <div class="grid grid-cols-3 gap-3">
+                <input type="number" id="i-qty" value="1" class="p-4 rounded-2xl bg-slate-50 font-black text-center" placeholder="Cant">
+                <input type="number" id="i-price" placeholder="Precio $" class="p-4 rounded-2xl bg-slate-50 font-black">
+                <input type="number" id="i-disc" value="0" class="p-4 rounded-2xl bg-red-50 text-red-600 font-black text-center">
+            </div>
+            <div class="flex gap-2">
+                <button id="btn-img" onclick="document.getElementById('file-input').click()" class="flex-1 bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-[10px] uppercase border-2 border-dashed border-slate-200">📷 Foto</button>
+                <button onclick="addItem()" class="flex-[2] bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase shadow-xl">+ Añadir</button>
+            </div>
+            <input type="file" id="file-input" class="hidden" accept="image/*" onchange="handleImg(this)">
+        </div>
+
+        <div id="items-list" class="space-y-2"></div>
+
+        <div class="bg-slate-900 p-8 rounded-[3rem] shadow-2xl text-center">
+            <div id="display-total" class="text-6xl font-black text-white tracking-tighter mb-4">$0</div>
+            <button onclick="saveAndPDF()" class="w-full bg-emerald-500 text-white py-6 rounded-3xl font-black shadow-xl uppercase tracking-widest active:scale-95 transition-all">Generar Cotización</button>
+        </div>
+    </main>
+
+    <main id="view-history" class="view p-4 max-w-lg mx-auto space-y-4 -mt-10">
+        <input type="text" id="search-history" oninput="renderHistory()" placeholder="🔍 Buscar en Base de Datos..." class="w-full p-5 rounded-[2rem] shadow-sm font-bold border-none">
+        <div id="history-list" class="space-y-3"></div>
+    </main>
+
+    <main id="view-clients" class="view p-4 max-w-lg mx-auto space-y-3 -mt-10">
+        <div class="flex justify-between items-center px-4 mb-2">
+            <h2 class="text-slate-900 font-black uppercase text-xs">Base de Clientes</h2>
+            <button onclick="handleClientAction('NEW')" class="bg-slate-900 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase">+ Nuevo</button>
+        </div>
+        <div id="clients-list" class="space-y-2"></div>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t h-24 flex items-center justify-around z-50 rounded-t-[3rem] shadow-2xl">
+        <button onclick="switchView('quote')" id="nav-quote" class="nav-active flex flex-col items-center gap-1">
+            <span class="icon-circle p-3 rounded-2xl text-xl transition-all">🧮</span><span class="text-[9px] font-black uppercase">Nueva</span>
+        </button>
+        <button onclick="switchView('history')" id="nav-history" class="flex flex-col items-center text-slate-300 gap-1">
+            <span class="icon-circle p-3 rounded-2xl text-xl transition-all">📋</span><span class="text-[9px] font-black uppercase">Historial</span>
+        </button>
+        <button onclick="switchView('clients')" id="nav-clients" class="flex flex-col items-center text-slate-300 gap-1">
+            <span class="icon-circle p-3 rounded-2xl text-xl transition-all">👥</span><span class="text-[9px] font-black uppercase">Clientes</span>
+        </button>
+    </nav>
+
+    <script>
+        let items = [], tempImg = null;
+        function switchView(v) {
+            document.querySelectorAll('.view').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(e => e.classList.remove('nav-active', 'text-slate-900'));
+            document.getElementById('view-'+v).classList.add('active');
+            document.getElementById('nav-'+v).classList.add('nav-active');
+            window.scrollTo(0,0);
+        }
+
+        function renderClientSelect() {
+            const s = document.getElementById('q-client-select');
+            if(!s) return;
+            let html = '<option value="">-- SELECCIONAR CLIENTE --</option><option value="NEW" style="color:blue; font-weight:bold">+ REGISTRAR NUEVO</option>';
+            if(window.clientesData) window.clientesData.forEach(c => html += `<option value="${c.name}">${c.name}</option>`);
+            s.innerHTML = html;
+        }
+
+        async function handleClientAction(val) {
+            if (val === "NEW") {
+                const n = prompt("Nombre del cliente:");
+                if (n) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), { name: n.toUpperCase().trim() });
+                document.getElementById('q-client-select').value = "";
+            }
+        }
+
+        function renderClientsList() {
+            document.getElementById('clients-list').innerHTML = window.clientesData.map(c => `
+                <div class="glass-card p-5 flex justify-between items-center shadow-sm">
+                    <span class="font-black text-slate-800 text-xs uppercase">${c.name}</span>
+                    <button onclick="deleteClient('${c.id}')" class="text-red-400 bg-red-50 px-4 py-2 rounded-xl text-[10px] font-black uppercase">Borrar</button>
+                </div>`).join('');
+        }
+
+        async function deleteClient(id) { if(confirm("¿Eliminar de la base?")) await fb.deleteDoc(fb.doc(fb.db, "erp_clientes", id)); }
+
+        function handleImg(i) {
+            if (i.files && i.files[0]) {
+                const r = new FileReader();
+                r.onload = (e) => {
+                    tempImg = e.target.result;
+                    document.getElementById('btn-img').innerText = "✅ Foto Lista";
+                    document.getElementById('btn-img').classList.add('bg-emerald-500', 'text-white', 'border-none');
+                };
+                r.readAsDataURL(i.files[0]);
+            }
+        }
+
+        function addItem() {
+            const d = document.getElementById('i-desc').value, q = Number(document.getElementById('i-qty').value), p = Number(document.getElementById('i-price').value), ds = Number(document.getElementById('i-disc').value);
+            if (!d || q<=0 || p<=0) return alert("Faltan datos");
+            const total = (q * p) * (1 - (ds/100));
+            items.push({ desc: d.toUpperCase(), qty: q, price: p, disc: ds, total: Math.round(total), img: tempImg });
+            document.getElementById('i-desc').value = ""; document.getElementById('i-price').value = ""; document.getElementById('i-disc').value = "0";
+            tempImg = null; document.getElementById('btn-img').innerText = "📷 Foto"; 
+            document.getElementById('btn-img').className = "flex-1 bg-slate-100 text-slate-400 py-4 rounded-2xl font-black text-[10px] uppercase border-2 border-dashed border-slate-200";
+            renderItems();
+        }
+
+        function renderItems() {
+            document.getElementById('items-list').innerHTML = items.map((it, i) => `
+                <div class="glass-card p-4 flex justify-between items-center shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-xl bg-slate-50 border overflow-hidden">
+                            ${it.img ? `<img src="${it.img}" class="w-full h-full object-cover">` : `<div class="w-full h-full flex items-center justify-center text-[8px] text-slate-300 font-bold uppercase">N/A</div>`}
+                        </div>
+                        <div>
+                            <div class="text-[10px] font-black uppercase text-slate-900 leading-tight">${it.desc}</div>
+                            <div class="text-[9px] font-bold text-slate-400 mt-1">${it.qty} x $${it.price.toLocaleString()} (-${it.disc}%)</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4"><span class="font-black text-sm text-slate-800">$${it.total.toLocaleString()}</span><button onclick="items.splice(${i},1);renderItems();" class="text-slate-200 p-2 text-lg">✕</button></div>
+                </div>`).join('');
+            document.getElementById('display-total').innerText = '$' + items.reduce((s, i) => s + i.total, 0).toLocaleString();
+        }
+
+        async function saveAndPDF() {
+            const client = document.getElementById('q-client-select').value;
+            if (!client || items.length === 0) return alert("Faltan datos");
+            const suffix = prompt("Descripción para el Folio:");
+            if (!suffix) return;
+            const folio = `COT_EUREKALAB_${window.lastFolio} - ${suffix.toUpperCase()}`, total = items.reduce((s, i) => s + i.total, 0);
+            if(confirm(`¿Emitir ${folio}?`)) {
+                await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), { folio: window.lastFolio, folioCode: folio, client, total, date: new Date().toLocaleDateString('es-CL'), items: items.map(it => ({...it, img: null})) });
+                await fb.updateDoc(fb.doc(fb.db, "config", "eureka_erp_v10"), { lastFolio: fb.increment(1) });
+                generatePDF({folioCode: folio, client, total, date: new Date().toLocaleDateString('es-CL'), items});
+                items = []; renderItems(); document.getElementById('q-client-select').value = "";
+            }
+        }
+
+        function renderHistory() {
+            const search = document.getElementById('search-history').value.toUpperCase();
+            document.getElementById('history-list').innerHTML = window.historialData.filter(c => c.client.includes(search) || c.folioCode.includes(search)).map(c => `
+                <div class="glass-card p-5 border-l-[12px] border-slate-900 shadow-sm">
+                    <div class="flex justify-between text-[10px] font-black text-slate-400 uppercase mb-1"><span>#${c.folio} | ${c.date}</span><span class="text-slate-900 font-black">$${c.total.toLocaleString()}</span></div>
+                    <div class="text-xs font-black text-slate-800 uppercase italic">${c.client}</div>
+                    <div class="text-[9px] text-slate-400 font-bold uppercase mt-1 truncate tracking-tighter">${c.folioCode}</div>
+                </div>`).join('');
+        }
+
+        function generatePDF(data) {
+            const el = document.createElement('div');
+            el.style.padding = '40px'; el.style.fontFamily = 'Arial, sans-serif';
+            el.innerHTML = `
+                <div style="border-bottom: 10px solid #0f172a; padding-bottom: 20px; margin-bottom: 30px">
+                    <h1 style="margin:0; font-size: 38px; color:#0f172a; font-weight: 900">EUREKA! LAB</h1>
+                    <p style="color:#64748b; font-weight:bold; font-size:14px; text-transform:uppercase">${data.folioCode}</p>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom: 40px; font-size:14px"><div><b>CLIENTE:</b> ${data.client}</div><div><b>FECHA:</b> ${data.date}</div></div>
+                <table style="width:100%; border-collapse:collapse; font-size: 12px">
+                    <thead><tr style="background:#0f172a; color:white"><th style="padding:15px; text-align:left">REF.</th><th style="padding:15px; text-align:left">ITEM</th><th style="padding:15px; text-align:center">CANT.</th><th style="padding:15px; text-align:right">TOTAL</th></tr></thead>
+                    <tbody>${data.items.map(i => `<tr><td style="padding:15px; border-bottom:1px solid #f1f5f9; width:75px">${i.img ? `<img src="${i.img}" style="width:65px; height:65px; object-fit:cover; border-radius:10px">` : '-'}</td><td style="padding:15px; border-bottom:1px solid #f1f5f9"><b>${i.desc}</b><br><small>Unit: $${i.price.toLocaleString()} (-${i.disc}%)</small></td><td style="padding:15px; border-bottom:1px solid #f1f5f9; text-align:center; font-weight:bold">${i.qty}</td><td style="padding:15px; border-bottom:1px solid #f1f5f9; text-align:right"><b>$${i.total.toLocaleString()}</b></td></tr>`).join('')}</tbody>
+                </table>
+                <div style="text-align:right; margin-top:50px"><h2 style="font-size: 55px; margin:0; font-weight:900; color:#0f172a">$${data.total.toLocaleString()}</h2></div>`;
+            html2pdf().from(el).set({ filename: `${data.folioCode}.pdf`, margin: 10, html2canvas: { scale: 3 } }).save();
+        }
+    </script>
+</body>
+</html>
