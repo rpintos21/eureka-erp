@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Eureka! Lab ERP v38</title>
+    <title>Eureka! Lab ERP v41</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyCtlfBJ0QHOMhEDPRAXHL9nRFswnr49rik",
@@ -23,7 +23,7 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        window.fb = { db, doc, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction };
+        window.fb = { db, doc, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc };
 
         onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
             window.currentFolio = (d.exists() && d.data().lastFolio) ? Number(d.data().lastFolio) : 1000;
@@ -42,63 +42,66 @@
     </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f1f5f9; }
-        .input-dark { background: #1e293b; border: 1px solid #334155; padding: 12px; border-radius: 10px; width: 100%; color: white; font-size: 14px; }
-        .tab-btn { padding: 16px; flex: 1; text-align: center; font-weight: 800; font-size: 10px; color: #64748b; border-bottom: 3px solid transparent; text-transform: uppercase; }
-        .tab-active { color: #3b82f6; border-bottom-color: #3b82f6; background: #1e293b; }
+        body { font-family: 'Inter', sans-serif; background: #020617; color: #f1f5f9; }
+        .input-dark { background: #1e293b; border: 1px solid #334155; padding: 12px; border-radius: 10px; width: 100%; color: white; font-size: 16px; }
+        .tab-btn { padding: 16px; flex: 1; text-align: center; font-weight: 800; font-size: 11px; color: #64748b; border-bottom: 3px solid transparent; text-transform: uppercase; }
+        .tab-active { color: #3b82f6; border-bottom-color: #3b82f6; background: #0f172a; }
         
-        /* Contenedor PDF A4 */
-        #preview-pane { background: #0f172a; overflow: auto; padding: 20px; display: flex; justify-content: center; }
+        #preview-pane { background: #0f172a; overflow: auto; padding: 10px; display: flex; justify-content: center; }
+        
+        /* HOJA A4 DEFINITIVA PARA PDF */
         #pdf-canvas { 
             background: white; color: #1e293b; 
             width: 210mm; min-height: 297mm; 
-            padding: 15mm; flex-shrink: 0;
+            padding: 20mm; flex-shrink: 0;
             box-sizing: border-box;
+            position: relative;
         }
 
         @media (max-width: 1024px) {
-            #pdf-canvas { transform: scale(0.45); transform-origin: top center; margin-bottom: -160mm; }
+            #pdf-canvas { transform: scale(0.42); transform-origin: top center; margin-bottom: -170mm; }
         }
         @media (min-width: 1025px) {
-            #pdf-canvas { transform: scale(0.8); transform-origin: top center; }
+            #pdf-canvas { transform: scale(0.85); transform-origin: top center; }
         }
+
+        .btn-icon { padding: 8px; border-radius: 8px; transition: all 0.2s; }
+        .btn-icon:active { scale: 0.9; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
-    <nav class="flex bg-slate-900 border-b border-slate-800 shrink-0">
-        <button onclick="setTab('edit')" id="tab-edit" class="tab-btn tab-active">Cotizador</button>
+    <nav class="flex bg-slate-950 border-b border-slate-800 shrink-0">
+        <button onclick="setTab('edit')" id="tab-edit" class="tab-btn tab-active">Cotizar</button>
         <button onclick="setTab('hist')" id="tab-hist" class="tab-btn">Historial</button>
         <button onclick="setTab('clients')" id="tab-clients" class="tab-btn">Clientes</button>
     </nav>
 
     <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        
         <aside class="lg:w-1/3 bg-slate-900 overflow-y-auto p-4 space-y-4 border-r border-slate-800">
             <div id="panel-edit" class="space-y-4">
-                
-                <div class="space-y-2 bg-slate-800/40 p-3 rounded-xl">
-                    <label class="text-[9px] text-slate-500 font-bold ml-1 uppercase">Fecha de Emisión</label>
-                    <input type="date" id="q-date-input" class="input-dark mb-2" oninput="renderPreview()">
+                <div class="bg-slate-800/40 p-3 rounded-xl border border-slate-700 space-y-3">
+                    <input type="date" id="q-date-input" class="input-dark">
                     <select id="q-client" class="input-dark" onchange="renderPreview()"></select>
-                    <input type="text" id="q-desc" placeholder="Nombre del Proyecto / Referencia" class="input-dark mt-2" oninput="renderPreview()">
+                    <input type="text" id="q-desc" placeholder="Nombre del Proyecto" class="input-dark" oninput="renderPreview()">
                 </div>
 
-                <div id="item-box" class="bg-slate-800 p-4 rounded-2xl border-2 border-blue-600/20 space-y-3 transition-all">
-                    <p id="item-mode-label" class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Añadir Nuevo Ítem</p>
-                    <textarea id="i-name" placeholder="Descripción del producto o servicio..." class="input-dark h-20 resize-none"></textarea>
+                <div id="item-box" class="bg-slate-800 p-4 rounded-2xl border-2 border-blue-600/20 space-y-3">
+                    <p id="item-mode-label" class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Nuevo Ítem</p>
+                    <textarea id="i-name" placeholder="Descripción detallada..." class="input-dark h-20 resize-none"></textarea>
                     <div class="flex gap-2">
                         <input type="number" id="i-qty" value="1" class="input-dark text-center w-20">
                         <input type="number" id="i-price" placeholder="$ Precio" class="input-dark flex-1">
-                        <button onclick="document.getElementById('f-img').click()" id="b-img" class="bg-slate-700 px-4 rounded-xl text-xl border border-slate-600">📷</button>
+                        <button onclick="document.getElementById('f-img').click()" id="b-img" class="bg-slate-700 px-4 rounded-xl text-xl">📷</button>
                     </div>
                     <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
-                    <button id="btn-item-main" onclick="addItem()" class="w-full bg-blue-600 py-3 rounded-xl font-bold uppercase text-xs">Insertar Ítem</button>
-                    <button id="btn-cancel-edit" onclick="cancelItemEdit()" class="hidden w-full bg-slate-700 py-2 rounded-xl text-[10px] text-slate-400 uppercase">Cancelar Edición</button>
+                    <button id="btn-item-main" onclick="addItem()" class="w-full bg-blue-600 py-3 rounded-xl font-bold uppercase text-xs">Insertar</button>
+                    <button id="btn-cancel-edit" onclick="cancelItemEdit()" class="hidden w-full bg-slate-700 py-2 rounded-xl text-[10px]">Cancelar</button>
                 </div>
 
                 <div id="items-list" class="space-y-2"></div>
-
-                <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-5 rounded-2xl font-black text-lg uppercase shadow-xl mt-4">Guardar y Enviar PDF</button>
+                <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-5 rounded-2xl font-black text-lg uppercase shadow-xl mt-4">Guardar y Enviar</button>
             </div>
             
             <div id="panel-hist" class="hidden space-y-3"></div>
@@ -111,44 +114,44 @@
             </div>
         </aside>
 
-        <main id="preview-container" class="lg:w-2/3 overflow-y-auto">
+        <main id="preview-pane" class="lg:w-2/3">
             <div id="pdf-canvas">
-                <div style="display:flex; justify-content:space-between; align-items: flex-start; border-bottom: 5px solid #0f172a; padding-bottom: 20px; margin-bottom: 25px;">
-                    <div><img src="logo.png" style="height:85px; width: auto; display: block;"></div>
+                <div style="display:flex; justify-content:space-between; align-items: flex-start; border-bottom: 4px solid #0f172a; padding-bottom: 20px; margin-bottom: 25px;">
+                    <div><img src="logo.png" style="height:90px; width: auto; display: block;"></div>
                     <div style="text-align:right;">
-                        <h2 id="p-folio" style="font-size:16px; font-weight:900; margin:0; color: #0f172a;">---</h2>
-                        <p style="font-size:11px; margin:5px 0 0; color: #64748b; font-weight: 700;">FECHA: <span id="p-date" style="color:#0f172a"></span></p>
+                        <h2 id="p-folio" style="font-size:18px; font-weight:900; margin:0; color: #0f172a;">---</h2>
+                        <p style="font-size:12px; margin:5px 0 0; color: #64748b; font-weight: 700;">FECHA: <span id="p-date" style="color:#0f172a"></span></p>
                     </div>
                 </div>
 
-                <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 25px;">
-                    <p style="font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; margin:0 0 5px 0;">Atención a:</p>
-                    <b id="p-client" style="font-size: 16px; text-transform: uppercase; color: #0f172a;">---</b>
+                <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 30px;">
+                    <p style="font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin:0 0 5px 0;">Presupuesto para:</p>
+                    <b id="p-client" style="font-size: 18px; text-transform: uppercase; color: #0f172a;">---</b>
                 </div>
 
-                <table style="width:100%; border-collapse:collapse; table-layout: fixed;">
+                <table style="width:100%; border-collapse:collapse;">
                     <thead>
                         <tr style="background: #0f172a; color: white;">
-                            <th style="padding: 12px; text-align: center; font-size: 10px; width: 45px;">CANT</th>
-                            <th style="padding: 12px; text-align: left; font-size: 10px;">DESCRIPCIÓN</th>
-                            <th style="padding: 12px; text-align: center; font-size: 10px; width: 150px;">REF. VISUAL</th>
-                            <th style="padding: 12px; text-align: right; font-size: 10px; width: 110px;">TOTAL</th>
+                            <th style="padding: 15px; text-align: center; font-size: 11px; width: 50px;">CANT</th>
+                            <th style="padding: 15px; text-align: left; font-size: 11px;">DESCRIPCIÓN</th>
+                            <th style="padding: 15px; text-align: center; font-size: 11px; width: 150px;">REF. VISUAL</th>
+                            <th style="padding: 15px; text-align: right; font-size: 11px; width: 120px;">TOTAL</th>
                         </tr>
                     </thead>
                     <tbody id="p-body"></tbody>
                 </table>
 
-                <div style="margin-top: 30px; display: flex; justify-content: flex-end;">
-                    <div style="width: 280px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
-                        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px;">
-                            <span style="color: #64748b;">Subtotal Neto:</span><b id="p-sub">$0</b>
+                <div style="margin-top: 40px; display: flex; justify-content: flex-end;">
+                    <div style="width: 300px; background: #f8fafc; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px;">
+                            <span>Neto:</span><b id="p-sub">$0</b>
                         </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 2px solid #cbd5e1;">
-                            <span style="color: #64748b;">IVA (19%):</span><b id="p-iva">$0</b>
+                        <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 2px solid #cbd5e1;">
+                            <span>IVA (19%):</span><b id="p-iva">$0</b>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 11px; font-weight: 900; color: #3b82f6;">TOTAL VENTA</span>
-                            <h2 id="p-total" style="font-size: 32px; font-weight: 900; margin: 0; color: #0f172a; letter-spacing: -1px;">$0</h2>
+                            <span style="font-size: 12px; font-weight: 900; color: #3b82f6;">TOTAL VENTA</span>
+                            <h2 id="p-total" style="font-size: 34px; font-weight: 900; margin: 0; color: #0f172a;">$0</h2>
                         </div>
                     </div>
                 </div>
@@ -165,7 +168,7 @@
                 document.getElementById('panel-'+s).classList.toggle('hidden', s !== t);
                 document.getElementById('tab-'+s).classList.toggle('active', s === t);
             });
-            document.getElementById('preview-container').classList.toggle('hidden', t !== 'edit');
+            document.getElementById('preview-pane').classList.toggle('hidden', t !== 'edit');
         }
 
         function handleImg(input) {
@@ -178,13 +181,10 @@
         function addItem() {
             const n = document.getElementById('i-name').value.toUpperCase(), p = Number(document.getElementById('i-price').value), q = Number(document.getElementById('i-qty').value);
             if(!n || p <= 0) return alert("Completa descripción y precio");
-
             if(editingItemIdx !== null) {
-                // Actualizar ítem existente en su misma posición
                 items[editingItemIdx] = { name: n, price: p, qty: q, total: p*q, img: tempImg || items[editingItemIdx].img };
                 cancelItemEdit();
             } else {
-                // Añadir nuevo
                 items.push({ name: n, price: p, qty: q, total: p*q, img: tempImg });
             }
             resetItemForm(); renderPreview();
@@ -197,26 +197,18 @@
 
         function startItemEdit(idx) {
             editingItemIdx = idx; const it = items[idx];
-            document.getElementById('i-name').value = it.name; 
-            document.getElementById('i-price').value = it.price; 
-            document.getElementById('i-qty').value = it.qty;
-            // Estética de edición
+            document.getElementById('i-name').value = it.name; document.getElementById('i-price').value = it.price; document.getElementById('i-qty').value = it.qty;
             document.getElementById('item-box').classList.replace('border-blue-600/20', 'border-orange-500');
-            document.getElementById('item-mode-label').innerText = "⚠️ Modo Edición de Ítem";
-            document.getElementById('item-mode-label').classList.replace('text-blue-400', 'text-orange-500');
-            document.getElementById('btn-item-main').innerText = "Guardar Cambios en Ítem";
-            document.getElementById('btn-item-main').classList.replace('bg-blue-600', 'bg-orange-600');
+            document.getElementById('item-mode-label').innerText = "Editando Ítem";
+            document.getElementById('btn-item-main').innerText = "Actualizar";
             document.getElementById('btn-cancel-edit').classList.remove('hidden');
-            window.scrollTo({top: 0, behavior:'smooth'});
         }
 
         function cancelItemEdit() {
             editingItemIdx = null; resetItemForm();
             document.getElementById('item-box').classList.replace('border-orange-500', 'border-blue-600/20');
-            document.getElementById('item-mode-label').innerText = "Añadir Ítem";
-            document.getElementById('item-mode-label').classList.replace('text-orange-500', 'text-blue-400');
-            document.getElementById('btn-item-main').innerText = "Insertar Ítem";
-            document.getElementById('btn-item-main').classList.replace('bg-orange-600', 'bg-blue-600');
+            document.getElementById('item-mode-label').innerText = "Nuevo Ítem";
+            document.getElementById('btn-item-main').innerText = "Insertar";
             document.getElementById('btn-cancel-edit').classList.add('hidden');
         }
 
@@ -224,75 +216,86 @@
             const dInput = document.getElementById('q-date-input').value;
             document.getElementById('p-date').innerText = dInput ? new Date(dInput+'T12:00:00').toLocaleDateString('es-CL') : '---';
             document.getElementById('p-client').innerText = document.getElementById('q-client').value || '---';
-            const f = window.currentFolio || 1000, desc = document.getElementById('q-desc').value.toUpperCase() || 'GENERAL';
+            const f = window.currentFolio || 1000, desc = document.getElementById('q-desc').value.toUpperCase() || 'COTIZACIÓN';
             document.getElementById('p-folio').innerText = `COT-${f} | ${desc}`;
-
             const b = document.getElementById('p-body');
             b.innerHTML = items.map(it => `
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 15px; text-align: center; font-weight: 800; font-size: 14px;">${it.qty}</td>
-                    <td style="padding: 15px; font-size: 11px; line-height: 1.5; color: #1e293b; white-space: pre-wrap; word-wrap: break-word;">${it.name}</td>
-                    <td style="padding: 10px; text-align: center;">
+                <tr style="border-bottom: 1px solid #e2e8f0; vertical-align: middle;">
+                    <td style="padding: 20px; text-align: center; font-weight: 800; font-size: 16px;">${it.qty}</td>
+                    <td style="padding: 20px; font-size: 14px; line-height: 1.6; color: #1e293b; white-space: pre-wrap; word-wrap: break-word;">${it.name}</td>
+                    <td style="padding: 15px; text-align: center;">
                         ${it.img ? `<img src="${it.img}" style="max-height: 40mm; max-width: 40mm; object-fit: contain; border-radius: 6px;">` : ''}
                     </td>
-                    <td style="padding: 15px; text-align: right; font-weight: 900; color: #0f172a; font-size: 15px;">$${it.total.toLocaleString('es-CL')}</td>
+                    <td style="padding: 20px; text-align: right; font-weight: 900; color: #0f172a; font-size: 16px;">$${it.total.toLocaleString('es-CL')}</td>
                 </tr>
             `).join('');
-
             const n = items.reduce((s,i) => s + i.total, 0), v = Math.round(n * 0.19);
             document.getElementById('p-sub').innerText = `$${n.toLocaleString('es-CL')}`;
             document.getElementById('p-iva').innerText = `$${v.toLocaleString('es-CL')}`;
             document.getElementById('p-total').innerText = `$${(n + v).toLocaleString('es-CL')}`;
-            
             document.getElementById('items-list').innerHTML = items.map((it, i) => `
                 <div class="flex justify-between bg-slate-800 p-2 rounded border border-slate-700 items-center">
                     <span class="text-xs font-bold truncate w-2/3 uppercase">${it.name}</span>
-                    <div class="flex gap-1">
-                        <button onclick="startItemEdit(${i})" class="text-blue-400 p-2 text-lg">✏️</button>
-                        <button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 p-2 text-lg">✕</button>
-                    </div>
+                    <div class="flex gap-1"><button onclick="startItemEdit(${i})" class="text-blue-400 p-1 text-lg">✏️</button><button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 p-1 text-lg">✕</button></div>
                 </div>`).join('');
+        }
+
+        async function generatePDFLogic(f, c, itemsToPdf, dateToPdf) {
+            const tempDiv = document.createElement('div');
+            tempDiv.style.position = 'absolute'; tempDiv.style.left = '-9999px'; tempDiv.style.top = '0';
+            document.body.appendChild(tempDiv);
+            const canvasClone = document.getElementById('pdf-canvas').cloneNode(true);
+            tempDiv.appendChild(canvasClone);
+            
+            // Re-renderizar el clon con los datos específicos de la cotización histórica
+            const n = itemsToPdf.reduce((s,i) => s + i.total, 0), v = Math.round(n * 0.19);
+            const folioStr = `COT-${f} | VISUALIZACIÓN`;
+            canvasClone.querySelector('#p-folio').innerText = folioStr;
+            canvasClone.querySelector('#p-date').innerText = new Date(dateToPdf+'T12:00:00').toLocaleDateString('es-CL');
+            canvasClone.querySelector('#p-client').innerText = c;
+            canvasClone.querySelector('#p-sub').innerText = `$${n.toLocaleString('es-CL')}`;
+            canvasClone.querySelector('#p-iva').innerText = `$${v.toLocaleString('es-CL')}`;
+            canvasClone.querySelector('#p-total').innerText = `$${(n + v).toLocaleString('es-CL')}`;
+            
+            canvasClone.querySelector('#p-body').innerHTML = itemsToPdf.map(it => `
+                <tr style="border-bottom: 1px solid #e2e8f0; vertical-align: middle;">
+                    <td style="padding: 20px; text-align: center; font-weight: 800; font-size: 16px;">${it.qty}</td>
+                    <td style="padding: 20px; font-size: 14px; line-height: 1.6; color: #1e293b; white-space: pre-wrap;">${it.name}</td>
+                    <td style="padding: 15px; text-align: center;">${it.img && it.img !== 'IMG' ? `<img src="${it.img}" style="max-height: 40mm; max-width: 40mm; object-fit: contain;">` : ''}</td>
+                    <td style="padding: 20px; text-align: right; font-weight: 900; color: #0f172a; font-size: 16px;">$${it.total.toLocaleString('es-CL')}</td>
+                </tr>`).join('');
+
+            const opt = { margin: 0, filename: `COT_${f}.pdf`, image: { type: 'jpeg', quality: 1 }, html2canvas: { scale: 4, useCORS: true, width: 794 }, jsPDF: { unit: 'mm', format: 'a4' } };
+            const worker = html2pdf().from(canvasClone).set(opt);
+            const blob = await worker.output('blob');
+            const file = new File([blob], `COT_${f}.pdf`, { type: 'application/pdf' });
+            if (navigator.share) await navigator.share({ files: [file], title: `COT_${f}` }); else worker.save();
+            document.body.removeChild(tempDiv);
         }
 
         async function saveAndSend() {
             const c = document.getElementById('q-client').value;
             if(!c || items.length === 0) return alert("Faltan datos");
-            
             try {
-                let f = 1000;
+                let f = window.currentFolio;
                 if(!editingId) {
                     const cfgRef = fb.doc(fb.db, "config", "eureka_erp_v10");
                     const snap = await fb.getDoc(cfgRef);
                     f = snap.exists() ? snap.data().lastFolio : 1000;
                     await fb.updateDoc(cfgRef, { lastFolio: f + 1 });
-                } else { f = window.currentFolio; }
-
+                }
                 const filename = `COT_${f}_${c.replace(/\s+/g, '_')}`;
-                const data = { folio: f, folioCode: filename, client: c, items: items, date: document.getElementById('q-date-input').value, neto: items.reduce((s,i)=>s+i.total,0) };
-                
+                const data = { folio: f, folioCode: filename, client: c, items, date: document.getElementById('q-date-input').value, neto: items.reduce((s,i)=>s+i.total,0) };
                 if(editingId) await fb.setDoc(fb.doc(fb.db, "erp_cotizaciones", editingId), data);
                 else await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), data);
-
-                const opt = { 
-                    margin: 0, filename: filename+'.pdf', image: { type: 'jpeg', quality: 1 },
-                    html2canvas: { scale: 3, useCORS: true, letterRendering: true, width: 794 },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-
-                const worker = html2pdf().from(document.getElementById('pdf-canvas')).set(opt);
-                const blob = await worker.output('blob');
-                const file = new File([blob], filename+'.pdf', { type: 'application/pdf' });
-
-                if (navigator.share) await navigator.share({ files: [file], title: filename });
-                else worker.save();
                 
+                await generatePDFLogic(f, c, items, document.getElementById('q-date-input').value);
                 items = []; editingId = null; renderPreview();
-                alert("¡Cotización guardada exitosamente!");
-            } catch (e) { alert("Error: " + e.message); }
+            } catch (e) { alert(e.message); }
         }
 
         function updateUI() {
-            const sel = document.getElementById('q-client'); sel.innerHTML = '<option value="">-- SELECCIONAR CLIENTE --</option>';
+            const sel = document.getElementById('q-client'); sel.innerHTML = '<option value="">-- CLIENTE --</option>';
             window.clientes.forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
             document.getElementById('clients-list').innerHTML = window.clientes.map(c => `<div class="bg-slate-800 p-3 rounded flex justify-between border border-slate-700 items-center"><b>${c.name}</b><button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="text-red-500">✕</button></div>`).join('');
         }
@@ -305,12 +308,16 @@
 
         function renderHistory() {
             document.getElementById('panel-hist').innerHTML = window.historial.map(h => `
-                <div class="bg-slate-800 p-4 rounded border-l-4 border-emerald-500 mb-2">
-                    <p class="text-[9px] opacity-40">${h.folioCode}</p>
-                    <p class="font-bold text-sm uppercase">${h.client}</p>
-                    <div class="flex justify-between mt-2">
-                        <b>$${Math.round(h.neto*1.19).toLocaleString()}</b>
-                        <button onclick="loadEdit('${h.id}')" class="bg-blue-600 px-3 py-1 rounded text-xs">EDITAR</button>
+                <div class="bg-slate-800 p-4 rounded border-l-4 border-blue-500 mb-3 relative shadow-lg">
+                    <p class="text-[9px] opacity-40 font-bold uppercase">${h.folioCode}</p>
+                    <p class="font-black text-sm uppercase text-blue-100 mb-2">${h.client}</p>
+                    <div class="flex justify-between items-center mt-4">
+                        <b class="text-emerald-400 text-lg">$${Math.round(h.neto*1.19).toLocaleString()}</b>
+                        <div class="flex gap-2">
+                            <button onclick="generatePDFLogic(${h.folio},'${h.client}',${JSON.stringify(h.items).replace(/"/g, '&quot;')},'${h.date}')" class="bg-slate-700 btn-icon text-xl">🔍</button>
+                            <button onclick="loadEdit('${h.id}')" class="bg-blue-600 btn-icon text-xl">✏️</button>
+                            <button onclick="if(confirm('¿Eliminar permanente?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="bg-red-900/50 btn-icon text-xl">🗑️</button>
+                        </div>
                     </div>
                 </div>`).join('');
         }
