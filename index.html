@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <title>Eureka! ERP v83</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Eureka! ERP v84</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -42,36 +42,37 @@
     </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; background: #020617; color: #f1f5f9; margin: 0; }
+        body { font-family: 'Inter', sans-serif; background: #020617; color: #f1f5f9; margin: 0; overflow-x: hidden; }
         .input-dark { background: #1e293b; border: 1px solid #334155; padding: 14px; border-radius: 12px; width: 100%; color: white; outline: none; font-size: 16px; }
         .tab-content { display: none; width: 100%; padding: 20px; }
         .tab-content.active { display: block; }
 
-        /* HOJA A4 DEFINITIVA */
+        /* HOJA A4 ESTÁNDAR */
         .pdf-page { 
             background: white !important; 
             color: #1e293b !important; 
-            width: 210mm; 
-            min-height: 297mm; 
-            padding: 15mm; 
+            width: 794px; /* A4 a 96dpi */
+            min-height: 1123px; 
+            padding: 40px; 
             display: flex; 
             flex-direction: column; 
             box-sizing: border-box;
+            position: relative;
             margin: 0 auto;
         }
 
-        /* Preliminar Ajustado */
-        #preliminar-container { width: 100%; overflow-x: auto; padding: 10px 0; background: #020617; }
+        /* Preliminar Editor */
+        #preliminar-container { width: 100%; overflow-x: auto; background: #020617; padding: 10px 0; }
         @media (max-width: 1024px) {
-            #pdf-canvas { zoom: 0.41; margin: 0 auto; transform-origin: top center; }
+            #pdf-canvas { zoom: 0.42; transform-origin: top center; }
         }
 
-        /* Modal Lupa */
-        #quick-view-modal { position: fixed; inset: 0; background: #020617; z-index: 1000; display: none; flex-direction: column; }
-        #qv-header { background: #0f172a; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; }
-        #qv-body { flex: 1; overflow: auto; padding: 20px; -webkit-overflow-scrolling: touch; display: flex; justify-content: center; }
-        
-        #qv-body .pdf-page { zoom: 1 !important; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        /* Lupa */
+        #quick-view-modal { position: fixed; inset: 0; background: rgba(2,6,23,0.98); z-index: 1000; display: none; flex-direction: column; }
+        #qv-header { background: #0f172a; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        #qv-body { flex: 1; overflow: auto; padding: 20px; display: block; }
+        #cloned-pdf-wrapper { width: fit-content; margin: 0 auto; }
+        #cloned-pdf-wrapper .pdf-page { zoom: 1 !important; transform: none !important; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
 
         .icon-btn { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1e293b; font-size: 20px; color: white; }
     </style>
@@ -86,15 +87,13 @@
 
     <div id="quick-view-modal">
         <div id="qv-header">
-            <button onclick="closeQuickView()" class="bg-red-600 text-white px-5 py-2 rounded-xl font-bold">CERRAR</button>
+            <button onclick="closeQuickView()" class="bg-red-600 text-white px-6 py-2 rounded-xl font-bold">VOLVER</button>
             <div class="flex gap-4">
                 <button id="qv-share-btn" class="icon-btn text-emerald-400">🔗</button>
                 <button id="qv-download-btn" class="icon-btn text-blue-400">⬇️</button>
             </div>
         </div>
-        <div id="qv-body">
-            <div id="cloned-pdf-wrapper"></div>
-        </div>
+        <div id="qv-body"><div id="cloned-pdf-wrapper"></div></div>
     </div>
 
     <div id="sec-edit" class="tab-content active">
@@ -103,7 +102,7 @@
                 <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 space-y-3">
                     <input type="date" id="q-date-input" class="input-dark">
                     <select id="q-client" class="input-dark" onchange="checkNewClient(this)"></select>
-                    <input type="text" id="q-desc" placeholder="Nombre del proyecto..." class="input-dark" oninput="renderPreview()">
+                    <input type="text" id="q-desc" placeholder="Referencia del proyecto..." class="input-dark" oninput="renderPreview()">
                 </div>
                 <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4">
                     <textarea id="i-name" placeholder="Descripción..." class="input-dark h-24 text-sm resize-none"></textarea>
@@ -113,7 +112,7 @@
                         <button onclick="document.getElementById('f-img').click()" class="bg-slate-700 px-4 rounded-xl">📷</button>
                     </div>
                     <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
-                    <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase shadow-lg">Agregar Ítem</button>
+                    <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase">Agregar Ítem</button>
                 </div>
                 <div id="items-list" class="space-y-2"></div>
                 <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-6 rounded-2xl font-black text-lg uppercase shadow-2xl">Guardar y Enviar PDF</button>
@@ -158,7 +157,7 @@
                             </div>
                         </div>
                         <div style="border-top: 3px solid #0f172a; padding-top: 20px; font-size: 11px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
-                            <div><b style="color:#0f172a; font-size: 12px;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Isla de Maipo | 📧 contacto@eurekalaboratorio.cl</div>
+                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Isla de Maipo | 📧 contacto@eurekalaboratorio.cl</div>
                             <div style="text-align: right;">🌐 www.eurekalaboratorio.cl | 📞 +56 9 8827 7250</div>
                         </div>
                     </div>
@@ -167,7 +166,11 @@
         </div>
     </div>
 
-    <div id="sec-hist" class="tab-content"><div id="history-content" class="space-y-4 max-w-2xl mx-auto"></div></div>
+    <div id="sec-hist" class="tab-content">
+        <input type="text" id="search-hist" placeholder="🔍 Buscar cliente o folio..." class="input-dark mb-6" oninput="renderHistory()">
+        <div id="history-content" class="space-y-4 max-w-2xl mx-auto"></div>
+    </div>
+
     <div id="sec-clients" class="tab-content">
         <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 mb-8 max-w-md mx-auto">
             <input type="text" id="c-name" placeholder="Empresa" class="input-dark">
@@ -188,32 +191,33 @@
                 const btn = document.getElementById('m-'+s);
                 btn.classList.toggle('text-blue-500', s === sec);
                 btn.classList.toggle('border-blue-500', s === sec);
+                btn.classList.toggle('text-slate-500', s !== sec);
+                btn.classList.toggle('border-transparent', s !== sec);
             });
             window.scrollTo(0,0);
         }
 
-        // --- LUPA: FIX DEFINITIVO ---
+        // --- LUPA MEJORADA ---
         async function openQuickView(h) {
             const modal = document.getElementById('quick-view-modal');
             const wrapper = document.getElementById('cloned-pdf-wrapper');
             
-            // Backup total
+            // Backup
             const backup = { it: [...items], c: document.getElementById('q-client').value, f: window.currentFolio, id: editingId, d: document.getElementById('q-date-input').value, ds: document.getElementById('q-desc').value };
             
-            // Forzar carga de datos
+            // Cargar datos
             items = h.items; 
             document.getElementById('q-client').value = h.client; 
             window.currentFolio = h.folio;
             document.getElementById('q-date-input').value = h.date;
             document.getElementById('q-desc').value = h.desc || "";
             
-            // Renderizar y esperar a que el navegador procese los textos
             renderPreview();
             
             setTimeout(() => {
                 wrapper.innerHTML = "";
                 const clone = document.getElementById('pdf-canvas').cloneNode(true);
-                clone.style.zoom = "1"; // Forzar tamaño real en la lupa
+                clone.style.zoom = "1";
                 wrapper.appendChild(clone);
                 
                 document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share');
@@ -221,30 +225,30 @@
                 
                 modal.style.display = "flex";
                 
-                // Restaurar editor
+                // Restaurar
                 items = backup.it; document.getElementById('q-client').value = backup.c; 
                 window.currentFolio = backup.f; editingId = backup.id;
                 document.getElementById('q-date-input').value = backup.d; document.getElementById('q-desc').value = backup.ds;
                 renderPreview();
-            }, 500); // Retraso aumentado para evitar blanco
+            }, 300);
         }
 
         function closeQuickView() { document.getElementById('quick-view-modal').style.display = "none"; }
 
-        // --- MOTOR PDF PROFESIONAL ---
+        // --- MOTOR PDF ABSOLUTO ---
         async function generateAndSharePDF(folio, clientName, mode) {
             const element = document.getElementById('pdf-canvas');
             const opt = { 
                 margin: 0, 
                 filename: `COT_${folio}.pdf`, 
-                image: { type: 'jpeg', quality: 1.0 }, 
+                image: { type: 'jpeg', quality: 0.98 }, 
                 html2canvas: { 
-                    scale: 2.5, 
+                    scale: 2, 
                     useCORS: true, 
-                    width: 794, // Ancho A4 exacto
-                    windowWidth: 1024 // Viewport de escritorio virtual
+                    width: 794,
+                    windowWidth: 794 // Forzamos ancho fijo para evitar desconfiguración móvil
                 }, 
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
             };
             
             const worker = html2pdf().from(element).set(opt);
@@ -272,12 +276,11 @@
             items = []; editingId = null; renderPreview();
         }
 
-        // --- SOPORTE ---
         function renderHistory() {
             const s = document.getElementById('search-hist').value.toLowerCase();
             const f = window.historial.filter(h => h.client.toLowerCase().includes(s) || h.folio.toString().includes(s));
             document.getElementById('history-content').innerHTML = f.map(h => `
-                <div class="bg-slate-800 p-5 rounded-2xl border-l-4 border-blue-500 shadow-xl flex justify-between items-center">
+                <div class="bg-slate-800 p-5 rounded-2xl border-l-4 border-blue-500 flex justify-between items-center shadow-lg">
                     <div class="truncate mr-4"><b class="text-white uppercase text-sm">${h.client}</b><br><small class="text-blue-400 font-bold">#${h.folio}</small></div>
                     <div class="flex gap-2">
                         <button onclick='openQuickView(${JSON.stringify(h)})' class="icon-btn">🔍</button>
@@ -286,9 +289,10 @@
                     </div>
                 </div>`).join('');
         }
+
         function updateUI() {
             const sel = document.getElementById('q-client');
-            sel.innerHTML = '<option value="">-- CLIENTE --</option><option value="NEW">➕ NUEVO</option>';
+            sel.innerHTML = '<option value="">-- SELECCIONAR CLIENTE --</option><option value="NEW">➕ REGISTRAR NUEVO</option>';
             window.clientes.forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
             document.getElementById('clients-list').innerHTML = window.clientes.map(c => `<div class="bg-slate-800 p-5 rounded-2xl flex justify-between border border-slate-700"><b>${c.name}</b><button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="icon-btn text-red-400">🗑️</button></div>`).join('');
         }
