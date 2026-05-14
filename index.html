@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <title>Eureka! ERP v99 - A4 Fix</title>
+    <title>Eureka! ERP v88 - A4 Fix</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -26,20 +26,24 @@
         const db = getFirestore(app);
         window.fb = { db, doc, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction };
 
+        onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
+            window.nextFolio = d.exists() ? Number(d.data().lastFolio) : 1000;
+            renderPreview();
+        });
+
         onSnapshot(collection(db, "erp_clientes"), (s) => {
-            window.clientes = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            window.clientes = s.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
             updateUI();
             renderPreview();
         });
 
         onSnapshot(collection(db, "erp_cotizaciones"), (s) => {
-            window.historial = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => Number(b.folio || 0) - Number(a.folio || 0));
+            window.historial = s.docs
+                .map(d => ({ id: d.id, ...d.data() }))
+                .sort((a, b) => Number(b.folio || 0) - Number(a.folio || 0));
             renderHistory();
-        });
-
-        onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
-            window.nextFolio = d.exists() ? Number(d.data().lastFolio) : 1000;
-            renderPreview();
         });
     </script>
 
@@ -47,8 +51,8 @@
         :root {
             --a4-width: 210mm;
             --a4-height: 297mm;
-            --a4-padding-x: 15mm;
-            --a4-padding-y: 14mm;
+            --a4-padding-x: 12mm;
+            --a4-padding-y: 12mm;
         }
 
         * { box-sizing: border-box; }
@@ -77,21 +81,18 @@
             padding: 20px;
         }
 
-        .tab-content.active { display: block !important; }
+        .tab-content.active { display: block; }
 
-        #preliminar-container {
+        .viewer-container {
             width: 100%;
-            background: #020617;
-            padding: 20px 0 60px;
             display: flex;
             justify-content: center;
+            align-items: flex-start;
             overflow-x: auto;
-        }
-
-        .pdf-shell {
-            width: min(100%, 900px);
-            display: flex;
-            justify-content: center;
+            overflow-y: hidden;
+            background: #020617;
+            padding: 20px 0 70px;
+            min-height: 50vh;
         }
 
         .pdf-page {
@@ -106,11 +107,136 @@
             color: #1e293b !important;
             display: flex;
             flex-direction: column;
+            position: relative;
             overflow: hidden;
             margin: 0 auto;
-            position: relative;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.42);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.50);
             transform-origin: top center;
+        }
+
+        .quote-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            font-family: 'Inter', Arial, sans-serif;
+        }
+
+        .quote-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 18px;
+            border-bottom: 4px solid #0f172a;
+            padding-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .quote-logo {
+            height: 58px;
+            max-width: 205px;
+            object-fit: contain;
+            display: block;
+        }
+
+        .client-box {
+            background: #f8fafc;
+            padding: 13px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            flex-shrink: 0;
+        }
+
+        .items-wrap {
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .items-table th {
+            background: #0f172a;
+            color: white;
+            font-size: 9px;
+            text-transform: uppercase;
+            padding: 9px 7px;
+            line-height: 1.2;
+        }
+
+        .items-table td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 9px 7px;
+            vertical-align: top;
+            color: #1e293b;
+            font-size: 10.8px;
+            line-height: 1.34;
+            word-break: break-word;
+        }
+
+        .item-img {
+            max-width: 100%;
+            max-height: 20mm;
+            border-radius: 4px;
+            object-fit: contain;
+            display: inline-block;
+        }
+
+        .footer-box {
+            margin-top: auto;
+            border-top: 2px solid #0f172a;
+            padding-top: 13px;
+            flex-shrink: 0;
+        }
+
+        .payment-box {
+            width: 310px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 9px;
+            color: #0c4a6e;
+            line-height: 1.45;
+        }
+
+        .total-box {
+            width: 215px;
+            text-align: right;
+            color: #0f172a;
+            flex-shrink: 0;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            font-size: 11px;
+        }
+
+        .final-total {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            margin-top: 4px;
+        }
+
+        .final-total h2 {
+            font-size: 22px;
+            font-weight: 900;
+            margin: 0;
+            color: #0f172a;
+            white-space: nowrap;
         }
 
         #quick-view-modal {
@@ -129,17 +255,516 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #1e293b;
+            flex-shrink: 0;
         }
 
         #qv-body {
             flex: 1;
             overflow: auto;
-            padding: 20px 10px 50px;
+            padding: 20px 10px 70px;
             display: flex;
             justify-content: center;
             align-items: flex-start;
         }
 
         .icon-btn {
-            width: 46px;
-            height:
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            background: #1e293b;
+            font-size: 22px;
+            color: white;
+            border: 1px solid #334155;
+        }
+
+        @media screen and (max-width: 950px) {
+            .viewer-container { justify-content: center; }
+            .pdf-page {
+                transform: scale(0.70);
+                margin-bottom: -88mm;
+            }
+            #qv-body .pdf-page {
+                transform: scale(0.76);
+                margin-bottom: -72mm;
+            }
+        }
+
+        @media screen and (max-width: 700px) {
+            .tab-content { padding: 14px; }
+            .viewer-container {
+                justify-content: flex-start;
+                padding-left: 8px;
+                padding-right: 8px;
+            }
+            .pdf-page {
+                transform: scale(0.49);
+                transform-origin: top left;
+                margin-left: 0;
+                margin-bottom: -151mm;
+            }
+            #qv-body {
+                justify-content: flex-start;
+                padding-left: 8px;
+            }
+            #qv-body .pdf-page {
+                transform: scale(0.53);
+                transform-origin: top left;
+                margin-left: 0;
+                margin-bottom: -139mm;
+            }
+        }
+
+        @media print {
+            body { background: #ffffff; }
+            .pdf-page {
+                box-shadow: none;
+                transform: none !important;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="flex bg-slate-950 border-b border-slate-800 sticky top-0 z-[100] h-[60px]">
+        <button onclick="navTo('edit')" id="m-edit" class="flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-blue-500 border-b-2 border-blue-500">Cotizador</button>
+        <button onclick="navTo('hist')" id="m-hist" class="flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-slate-500 border-b-2 border-transparent">Historial</button>
+        <button onclick="navTo('clients')" id="m-clients" class="flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-slate-500 border-b-2 border-transparent">Clientes</button>
+    </nav>
+
+    <div id="quick-view-modal">
+        <div id="qv-header">
+            <button onclick="closeQuickView()" class="bg-slate-700 text-white px-5 py-2 rounded-xl font-bold uppercase text-xs" type="button">Cerrar</button>
+            <div class="flex gap-3">
+                <button id="qv-share-btn" class="icon-btn text-emerald-400" type="button" title="Compartir PDF">🔗</button>
+                <button id="qv-download-btn" class="icon-btn text-blue-400" type="button" title="Descargar PDF">⬇️</button>
+            </div>
+        </div>
+        <div id="qv-body">
+            <div id="cloned-pdf-target" class="pdf-page"></div>
+        </div>
+    </div>
+
+    <div id="sec-edit" class="tab-content active">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+            <div class="lg:w-[400px] space-y-4 shrink-0">
+                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 space-y-3">
+                    <input type="date" id="q-date-input" class="input-dark" onchange="renderPreview()">
+                    <select id="q-client" class="input-dark" onchange="checkNewClient(this)"></select>
+                    <input type="text" id="q-desc" placeholder="Nombre del proyecto..." class="input-dark" oninput="renderPreview()">
+                </div>
+
+                <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 shadow-xl">
+                    <textarea id="i-name" placeholder="Descripción del producto..." class="input-dark h-24 text-sm resize-none"></textarea>
+                    <div class="flex gap-3">
+                        <input type="number" id="i-qty" value="1" min="1" class="input-dark text-center w-20">
+                        <input type="number" id="i-price" placeholder="$ Precio" min="0" class="input-dark flex-1">
+                        <button onclick="document.getElementById('f-img').click()" class="bg-slate-700 px-4 rounded-xl" type="button">📷</button>
+                    </div>
+                    <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
+                    <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase shadow-lg" type="button">Agregar Ítem</button>
+                </div>
+
+                <div id="items-list" class="space-y-2"></div>
+                <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-6 rounded-2xl font-black text-lg uppercase shadow-2xl" type="button">Guardar y Enviar PDF</button>
+            </div>
+
+            <div class="viewer-container">
+                <div id="pdf-canvas" class="pdf-page"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sec-hist" class="tab-content">
+        <input type="text" id="search-hist" placeholder="🔍 Buscar cotización..." class="input-dark mb-6" oninput="renderHistory()">
+        <div id="history-content" class="space-y-4 max-w-2xl mx-auto"></div>
+    </div>
+
+    <div id="sec-clients" class="tab-content">
+        <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 mb-8 max-w-md mx-auto">
+            <input type="text" id="c-name" placeholder="Nombre Empresa" class="input-dark">
+            <input type="text" id="c-phone" placeholder="WhatsApp" class="input-dark">
+            <input type="text" id="c-address" placeholder="Dirección" class="input-dark">
+            <button onclick="saveClient()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase" type="button">Guardar Cliente</button>
+        </div>
+        <div id="clients-list" class="space-y-4 max-w-md mx-auto"></div>
+    </div>
+
+    <script>
+        let items = [];
+        let tempImg = null;
+        let editingId = null;
+        window.currentFolio = null;
+
+        const dateInput = document.getElementById('q-date-input');
+        dateInput.valueAsDate = new Date();
+
+        function escapeHTML(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function formatMoney(value) {
+            return Number(value || 0).toLocaleString('es-CL');
+        }
+
+        function getSelectedDateText() {
+            if (!dateInput.value) return new Date().toLocaleDateString('es-CL');
+            const [y, m, d] = dateInput.value.split('-').map(Number);
+            return new Date(y, m - 1, d).toLocaleDateString('es-CL');
+        }
+
+        function navTo(sec) {
+            ['edit', 'hist', 'clients'].forEach(s => {
+                document.getElementById('sec-' + s).classList.toggle('active', s === sec);
+                const btn = document.getElementById('m-' + s);
+                btn.className = s === sec
+                    ? "flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-blue-500 border-b-2 border-blue-500"
+                    : "flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-slate-500 border-b-2 border-transparent";
+            });
+            if (sec === 'hist') renderHistory();
+            window.scrollTo(0, 0);
+        }
+
+        function getBaseHTML(folio, client, date, itemsArr, desc) {
+            const c = (window.clientes || []).find(x => x.name === client) || {};
+            const safeItems = Array.isArray(itemsArr) ? itemsArr : [];
+            const n = safeItems.reduce((s, i) => s + Number(i.total || 0), 0);
+            const v = Math.round(n * 0.19);
+            const total = n + v;
+
+            const rows = safeItems.map(it => `
+                <tr>
+                    <td style="width:9%; text-align:center; font-weight:800;">${escapeHTML(it.qty)}</td>
+                    <td style="width:52%;">${escapeHTML(it.name)}</td>
+                    <td style="width:18%; text-align:center;">${it.img ? `<img src="${it.img}" class="item-img">` : ''}</td>
+                    <td style="width:21%; text-align:right; font-weight:900; white-space:nowrap;">$${formatMoney(it.total)}</td>
+                </tr>
+            `).join('');
+
+            return `
+                <div class="quote-content">
+                    <div class="quote-header">
+                        <div>
+                            <img src="logo.png" class="quote-logo" crossorigin="anonymous" onerror="this.style.display='none'; this.insertAdjacentHTML('afterend','<div style=&quot;font-size:28px;font-weight:900;color:#0f172a;&quot;>EUREKA!</div>')">
+                            <div style="font-size:9px; color:#64748b; font-weight:800; letter-spacing:.5px; margin-top:3px;">LABORATORIO DE IDEAS</div>
+                        </div>
+                        <div style="text-align:right; flex-shrink:0; max-width:260px;">
+                            <h2 style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-${escapeHTML(folio)}</h2>
+                            <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b style="color:#0f172a">${escapeHTML(date)}</b></p>
+                            <p style="font-size:10px; color:#3b82f6; font-weight:800; margin:0; line-height:1.3;">${escapeHTML((desc || 'GENERAL').toUpperCase())}</p>
+                        </div>
+                    </div>
+
+                    <div class="client-box">
+                        <div style="width:60%; min-width:0;">
+                            <p style="font-size:8px; color:#64748b; font-weight:900; text-transform:uppercase; margin:0;">Cliente:</p>
+                            <b style="font-size:15px; text-transform:uppercase; color:#0f172a; line-height:1.25; display:block;">${escapeHTML(client || '---')}</b>
+                            <p style="font-size:10.5px; margin:4px 0 0; color:#475569; line-height:1.35;">${escapeHTML(c.address || '')}</p>
+                        </div>
+                        <div style="width:35%; text-align:right; border-left:2px solid #e2e8f0; padding-left:13px;">
+                            <p style="font-size:8px; color:#64748b; font-weight:900; text-transform:uppercase; margin:0;">Contacto:</p>
+                            <p style="font-size:10.5px; color:#0f172a; font-weight:700; margin:4px 0 0; line-height:1.35;">${escapeHTML(c.phone || '')}</p>
+                        </div>
+                    </div>
+
+                    <div class="items-wrap">
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:9%; text-align:center;">Cant</th>
+                                    <th style="width:52%; text-align:left;">Descripción</th>
+                                    <th style="width:18%; text-align:center;">Referencia</th>
+                                    <th style="width:21%; text-align:right;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows || `
+                                <tr>
+                                    <td style="text-align:center;">-</td>
+                                    <td>Sin ítems agregados</td>
+                                    <td></td>
+                                    <td style="text-align:right;">$0</td>
+                                </tr>`}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="footer-box">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:18px;">
+                            <div class="payment-box">
+                                <b style="font-size:8.5px; color:#0369a1;">PAGO TRANSFERENCIA</b><br>
+                                <b>Banco Estado</b> | Vista | <b>N°:</b> 37370574546<br>
+                                <b>RUT:</b> 76.823.326-8<br>
+                                <b>LABORATORIO CREATIVO EUREKA SPA</b>
+                            </div>
+                            <div class="total-box">
+                                <div class="total-row"><span>Neto:</span><b>$${formatMoney(n)}</b></div>
+                                <div class="total-row" style="border-bottom:1px solid #d1d5db; padding-bottom:4px;"><span>IVA (19%):</span><b>$${formatMoney(v)}</b></div>
+                                <div class="final-total"><span style="font-size:12px; font-weight:900;">TOTAL</span><h2>$${formatMoney(total)}</h2></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getCurrentQuoteData() {
+            return {
+                folio: editingId ? window.currentFolio : (window.nextFolio || 1000),
+                client: document.getElementById('q-client').value,
+                date: getSelectedDateText(),
+                items: [...items],
+                desc: document.getElementById('q-desc').value
+            };
+        }
+
+        async function openQuickView(h) {
+            document.getElementById('quick-view-modal').style.display = 'flex';
+            const target = document.getElementById('cloned-pdf-target');
+            target.innerHTML = getBaseHTML(h.folio, h.client, h.date, h.items || [], h.desc);
+            document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share', h);
+            document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save', h);
+        }
+
+        function closeQuickView() {
+            document.getElementById('quick-view-modal').style.display = 'none';
+        }
+
+        async function generateAndSharePDF(folio, clientName, mode, manualData = null) {
+            const d = manualData || getCurrentQuoteData();
+            const temp = document.createElement('div');
+
+            temp.className = 'pdf-page';
+            temp.style.position = 'fixed';
+            temp.style.left = '-10000px';
+            temp.style.top = '0';
+            temp.style.margin = '0';
+            temp.style.boxShadow = 'none';
+            temp.style.transform = 'none';
+            temp.innerHTML = getBaseHTML(d.folio, d.client, d.date, d.items || [], d.desc);
+
+            document.body.appendChild(temp);
+            await new Promise(r => setTimeout(r, 450));
+
+            const opt = {
+                margin: 0,
+                filename: `COT_${d.folio}.pdf`,
+                image: { type: 'jpeg', quality: 1 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    scrollX: 0,
+                    scrollY: 0,
+                    windowWidth: temp.scrollWidth,
+                    windowHeight: temp.scrollHeight
+                },
+                jsPDF: {
+                    unit: 'mm',
+                    format: 'a4',
+                    orientation: 'portrait',
+                    compress: true
+                },
+                pagebreak: { mode: ['avoid-all'] }
+            };
+
+            try {
+                if (mode === 'share' && navigator.share && navigator.canShare) {
+                    const blob = await html2pdf().set(opt).from(temp).output('blob');
+                    const file = new File([blob], `COT_${d.folio}.pdf`, { type: 'application/pdf' });
+
+                    if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            title: `COT #${d.folio}`,
+                            text: `Cotización COT-${d.folio} - ${d.client || ''}`,
+                            files: [file]
+                        });
+                    } else {
+                        await html2pdf().set(opt).from(temp).save();
+                    }
+                } else {
+                    await html2pdf().set(opt).from(temp).save();
+                }
+            } finally {
+                document.body.removeChild(temp);
+            }
+        }
+
+        async function saveAndSend() {
+            const c = document.getElementById('q-client').value;
+            if (!c || c === 'NEW' || items.length === 0) return alert('Faltan datos');
+
+            let f = editingId ? window.currentFolio : window.nextFolio;
+
+            if (!editingId) {
+                await fb.runTransaction(fb.db, async (t) => {
+                    const ref = fb.doc(fb.db, 'config', 'eureka_erp_v10');
+                    const snap = await t.get(ref);
+                    f = snap.exists() ? Number(snap.data().lastFolio) : 1000;
+                    t.set(ref, { lastFolio: f + 1 }, { merge: true });
+                });
+            }
+
+            const data = {
+                folio: f,
+                client: c,
+                items: [...items],
+                date: getSelectedDateText(),
+                desc: document.getElementById('q-desc').value
+            };
+
+            if (editingId) await fb.setDoc(fb.doc(fb.db, 'erp_cotizaciones', editingId), data);
+            else await fb.addDoc(fb.collection(fb.db, 'erp_cotizaciones'), data);
+
+            await generateAndSharePDF(f, c, 'share', data);
+
+            items = [];
+            editingId = null;
+            window.currentFolio = null;
+            document.getElementById('q-desc').value = '';
+            tempImg = null;
+            renderPreview();
+        }
+
+        function renderHistory() {
+            const searchEl = document.getElementById('search-hist');
+            const s = (searchEl?.value || '').toLowerCase();
+            const filtered = (window.historial || []).filter(h =>
+                String(h.client || '').toLowerCase().includes(s) ||
+                String(h.folio || '').includes(s) ||
+                String(h.desc || '').toLowerCase().includes(s)
+            );
+
+            document.getElementById('history-content').innerHTML = filtered.map(h => `
+                <div class="bg-slate-800 p-5 rounded-2xl border-l-4 border-blue-500 shadow-xl flex justify-between items-center gap-3">
+                    <div class="truncate mr-4 min-w-0">
+                        <b class="text-white uppercase text-sm block truncate">${escapeHTML(h.client || 'Sin cliente')}</b>
+                        <small class="text-blue-400 font-bold">#${escapeHTML(h.folio || '')} - ${escapeHTML(h.date || '')}</small>
+                        <div class="text-slate-400 text-xs truncate mt-1">${escapeHTML(h.desc || '')}</div>
+                    </div>
+                    <div class="flex gap-2 shrink-0">
+                        <button onclick='openQuickView(${JSON.stringify(h).replaceAll("'", "&#039;")})' class="icon-btn" type="button">🔍</button>
+                        <button onclick="loadEdit('${h.id}')" class="icon-btn text-blue-400" type="button">✏️</button>
+                        <button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="icon-btn text-red-400" type="button">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderPreview() {
+            const target = document.getElementById('pdf-canvas');
+            if (!target) return;
+
+            const d = getCurrentQuoteData();
+            target.innerHTML = getBaseHTML(d.folio, d.client, d.date, d.items, d.desc);
+
+            document.getElementById('items-list').innerHTML = items.map((it, i) => `
+                <div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center gap-3">
+                    <span class="truncate w-2/3 text-white text-xs font-bold uppercase">${escapeHTML(it.name)}</span>
+                    <span class="text-slate-300 text-xs shrink-0">$${formatMoney(it.total)}</span>
+                    <button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2 shrink-0" type="button">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function updateUI() {
+            const sel = document.getElementById('q-client');
+            const current = sel.value;
+
+            sel.innerHTML = '<option value="">-- SELECCIONAR CLIENTE --</option><option value="NEW">➕ NUEVO</option>';
+            (window.clientes || []).forEach(c => {
+                sel.innerHTML += `<option value="${escapeHTML(c.name)}">${escapeHTML(c.name)}</option>`;
+            });
+
+            if ([...sel.options].some(o => o.value === current)) sel.value = current;
+
+            document.getElementById('clients-list').innerHTML = (window.clientes || []).map(c => `
+                <div class="bg-slate-800 p-5 rounded-2xl flex justify-between border border-slate-700 gap-3 items-center">
+                    <div class="min-w-0">
+                        <b class="block truncate">${escapeHTML(c.name)}</b>
+                        <small class="text-slate-400 block truncate">${escapeHTML(c.phone || '')}</small>
+                    </div>
+                    <button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="icon-btn text-red-400 shrink-0" type="button">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function addItem() {
+            const n = document.getElementById('i-name').value.trim().toUpperCase();
+            const p = Number(document.getElementById('i-price').value);
+            const q = Number(document.getElementById('i-qty').value || 1);
+
+            if (!n || p <= 0 || q <= 0) return alert('Completa descripción, cantidad y precio');
+
+            items.push({ name: n, price: p, qty: q, total: p * q, img: tempImg });
+            document.getElementById('i-name').value = '';
+            document.getElementById('i-price').value = '';
+            document.getElementById('i-qty').value = 1;
+            document.getElementById('f-img').value = '';
+            tempImg = null;
+            renderPreview();
+        }
+
+        function loadEdit(id) {
+            const h = (window.historial || []).find(x => x.id === id);
+            if (!h) return alert('No encontré esa cotización');
+
+            items = [...(h.items || [])];
+            editingId = id;
+            window.currentFolio = h.folio;
+            document.getElementById('q-client').value = h.client;
+            document.getElementById('q-desc').value = h.desc || '';
+
+            if (h.date) {
+                const parts = String(h.date).split('-');
+                if (parts.length === 3) document.getElementById('q-date-input').value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+
+            navTo('edit');
+            renderPreview();
+        }
+
+        function handleImg(i) {
+            if (i.files[0]) {
+                const r = new FileReader();
+                r.onload = e => {
+                    tempImg = e.target.result;
+                    renderPreview();
+                };
+                r.readAsDataURL(i.files[0]);
+            }
+        }
+
+        async function saveClient() {
+            const data = {
+                name: document.getElementById('c-name').value.trim().toUpperCase(),
+                phone: document.getElementById('c-phone').value.trim(),
+                address: document.getElementById('c-address').value.trim()
+            };
+
+            if (data.name) await fb.addDoc(fb.collection(fb.db, 'erp_clientes'), data);
+            ['c-name', 'c-phone', 'c-address'].forEach(id => document.getElementById(id).value = '');
+            navTo('edit');
+        }
+
+        function checkNewClient(el) {
+            if (el.value === 'NEW') {
+                navTo('clients');
+                el.value = '';
+            } else {
+                renderPreview();
+            }
+        }
+
+        renderPreview();
+    </script>
+</body>
+</html>
