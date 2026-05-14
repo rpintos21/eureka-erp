@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Eureka! ERP v88 - A4 Fix</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -86,13 +86,42 @@
         .viewer-container {
             width: 100%;
             display: flex;
-            justify-content: center;
+            justify-content: flex-start;art;
             align-items: flex-start;
-            overflow-x: auto;
-            overflow-y: hidden;
+            overflow: auto;
             background: #020617;
             padding: 20px 0 70px;
             min-height: 50vh;
+            -webkit-overflow-scrolling: touch;
+            touch-action: manipulation;
+        }
+
+        .pdf-zoom-wrap {
+            transform-origin: top center;
+            flex-shrink: 0;
+        }
+
+        .zoom-controls {
+            position: sticky;
+            top: 70px;
+            z-index: 50;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            pointer-events: none;
+        }
+
+        .zoom-controls button {
+            pointer-events: auto;
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: white;
+            width: 42px;
+            height: 42px;
+            border-radius: 999px;
+            font-weight: 900;
+            box-shadow: 0 8px 20px rgba(0,0,0,.35);
         }
 
         .pdf-page {
@@ -281,19 +310,13 @@
         }
 
         @media screen and (max-width: 950px) {
-            .viewer-container {
-                justify-content: flex-start;
-                overflow-x: auto;
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-                padding: 14px;
-            }
-
+            .viewer-container,
             #qv-body {
                 justify-content: flex-start;
                 overflow: auto;
                 -webkit-overflow-scrolling: touch;
-                padding: 14px;
+                padding: 12px;
+                touch-action: manipulation;
             }
 
             .pdf-page,
@@ -304,13 +327,12 @@
             }
         }
 
-        @media screen and (max-width: 700px) {
-            .tab-content {
-                padding: 10px;
-            }
-
-            .viewer-container {
-                min-height: auto;
+    t: auto;
+                width: 100%;
+                max-width: 100%;
+                overflow-x: auto;
+                overflow-y: auto;
+                justify-content: flex-start;
             }
         }
 
@@ -340,8 +362,15 @@
                 <button id="qv-download-btn" class="icon-btn text-blue-400" type="button" title="Descargar PDF">⬇️</button>
             </div>
         </div>
+        <div class="zoom-controls" style="top:0; margin:10px 0;">
+            <button onclick="zoomQuickView(-0.1)" type="button">−</button>
+            <button onclick="fitQuickViewToWidth()" type="button">⤢</button>
+            <button onclick="zoomQuickView(0.1)" type="button">+</button>
+        </div>
         <div id="qv-body">
-            <div id="cloned-pdf-target" class="pdf-page"></div>
+            <div id="qv-zoom-wrap" class="pdf-zoom-wrap">
+                <div id="cloned-pdf-target" class="pdf-page"></div>
+            </div>
         </div>
     </div>
 
@@ -366,11 +395,16 @@
                 </div>
 
                 <div id="items-list" class="space-y-2"></div>
-                <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-6 rounded-2xl font-black text-lg uppercase shadow-2xl" type="button">Guardar y Enviar PDF</button>
-            </div>
-
-            <div class="viewer-container">
-                <div id="pdf-canvas" class="pdf-page"></div>
+                <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-6 rounded-2xl font-black text-lg uppercase shadow-2xl" type="button">Guardar y Enviar PDF<<button onclick="previewScale = 1; applyZoom('main-zoom-wrap', previewScale)" type="button">100%</button>                <div class="zoom-controls">
+                    <button onclick="zoomPreview(-0.1)" type="button">−</button>
+                    <button onclick="previewScale = 1; applyZoom('main-zoom-wrap', previewScale)" type="button">100%</button>
+                    <button onclick="zoomPreview(0.1)" type="button">+</button>
+                </div>
+                <div class="viewer-container" id="main-viewer">
+                    <div id="main-zoom-wrap" class="pdf-zoom-wrap">
+                        <div id="pdf-canvas" class="pdf-page"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -394,6 +428,10 @@
         let items = [];
         let tempImg = null;
         let editingId = null;
+        let previewScale = 1;
+        let qvScale = 1;
+        let pinchStartDistance = 0;
+        let pinchStartScale = 1;
         window.currentFolio = null;
 
         const dateInput = document.getElementById('q-date-input');
@@ -418,17 +456,86 @@
             return new Date(y, m - 1, d).toLocaleDateString('es-CL');
         }
 
+        function applyZoom(wrapId, scale) {
+            const wrap = document.getElementById(wrapId);
+            if (!wrap) return;
+
+            wrap.style.transform = `scale(${scale})`;
+            wrap.style.width = `${793.7 * scale}px`;
+            wrap.style.height = `${1122.5 * scale}px`;
+        }
+
+        function getTouchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        function attachPinchZoom(viewerId, wrapId, isQuickView = false) {
+            const viewer = document.getElementById(viewerId);
+            if (!viewer || viewer.dataset.pinchReady) return;
+
+            viewer.dataset.pinchReady = '1';
+
+            viewer.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    pinchStartDistance = getTouchDistance(e.touches);
+                    pinchStartScale = isQuickView ? qvScale : previewScale;
+                }
+            }, { passive: true });
+
+            viewer.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+
+                    const newDistance = getTouchDistance(e.touches);
+                    const ratio = newDistance / pinchStartDistance;
+                    const nextScale = Math.max(0.25, Math.min(3, pinchStartScale * ratio));
+
+                    if (isQuickView) {
+                        qvScale = nextScale;
+                        applyZoomfunction fitPreviewToWidth() {
+            previewScale = 1;
+            applyZoom('main-zoom-wrap', previewScale);
+        }     previewScale = 1;
+            applyZoom('main-zoom-wrap', previewScale);
+        }
+
+        function fitQuickViewToWidth() {
+            const viewer = document.getElementById('qv-body');
+            if (!viewer) return;
+            qvScale = Math.max(0.25, Math.min(1.4, (viewer.clientWidth - 24) / 793.7));
+            applyZoom('qv-zoom-wrap', qvScale);
+        }
+
+        function zoomPreview(delta) {
+            previewScale = Math.max(0.25, Math.min(2.5, previewScale + delta));
+            applyZoom('main-zoom-wrap', previewScale);
+        }
+
+        function zoomQuickView(delta) {
+            qvScale = Math.max(0.25, Math.min(2.5, qvScale + delta));
+            applyZoom('qv-zoom-wrap', qvScale);
+        }
+
         function navTo(sec) {
             ['edit', 'hist', 'clients'].forEach(s => {
                 document.getElementById('sec-' + s).classList.toggle('active', s === sec);
                 const btn = document.getElementById('m-' + s);
                 btn.className = s === sec
                     ? "flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-blue-500 border-b-2 border-blue-500"
-                    : "flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-slate-500 border-b-2 border-transparent";
-            });
-            if (sec === 'hist') renderHistory();
-            window.scrollTo(0, 0);
-        }
+                    : "flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-slate-500 border-b-2 border-tranif (sec === 'edit') setTimeout(() => applyZoom('main-zoom-wrap', previewScale), 80);t') renderHistory();
+            if (sec === 'edit') sewindow.addEventListener('resize', () => {
+            applyZoom('main-zoom-wrap', previewScale);
+            if (document.getElementById('quick-view-modal').style.display === 'flex') applyZoom('qv-zoom-wrap', qvScale);
+        });p', previewScale);
+            if (document.getElementById('quick-view-modal').style.display === 'flex') applyZoom('qv-zoom-wrap', qvScale);
+        });
+
+        window.addEventListener('load', () => {
+            attachPinchZoom('main-viewer', 'main-zoom-wrap', false);
+            attachPinchZoom('qv-body', 'qv-zoom-wrap', true);
+        });
 
         function getBaseHTML(folio, client, date, itemsArr, desc) {
             const c = (window.clientes || []).find(x => x.name === client) || {};
@@ -528,6 +635,7 @@
             target.innerHTML = getBaseHTML(h.folio, h.client, h.date, h.items || [], h.desc);
             document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share', h);
             document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save', h);
+            setTimeout(fitQuickViewToWidth, 80);
         }
 
         function closeQuickView() {
@@ -700,9 +808,9 @@
                 <div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center gap-3">
                     <span class="truncate w-2/3 text-white text-xs font-bold uppercase">${escapeHTML(it.name)}</span>
                     <span class="text-slate-300 text-xs shrink-0">$${formatMoney(it.total)}</span>
-                    <button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2 shrink-0" type="button">✕</button>
-                </div>
-            `).join('');
+                    <button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 texapplyZoom('main-zoom-wrap', previewScale);me(() => {
+                applyZoom('main-zoom-wrap', previewScale);
+            });
         }
 
         function updateUI() {
@@ -789,12 +897,10 @@
             if (el.value === 'NEW') {
                 navTo('clients');
                 el.value = '';
-            } else {
-                renderPreview();
-            }
-        }
-
+            } elserenderPreview();
+        setTimeout(() => applyZoom('main-zoom-wrap', previewScale), 150);
         renderPreview();
+        setTimeout(() => applyZoom('main-zoom-wrap', previewScale), 150);
     </script>
 </body>
 </html>
