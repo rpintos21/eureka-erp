@@ -281,39 +281,49 @@
         }
 
         @media screen and (max-width: 950px) {
-            .viewer-container { justify-content: center; }
-            .pdf-page {
-                transform: scale(0.70);
-                margin-bottom: -88mm;
+            .viewer-container {
+                justify-content: center;
+                overflow-x: hidden;
+                padding-left: 8px;
+                padding-right: 8px;
             }
+
+            .pdf-page {
+                transform: scale(calc((100vw - 32px) / 793.7));
+                transform-origin: top center;
+                margin-bottom: calc(-1122.5px * (1 - ((100vw - 32px) / 793.7)));
+            }
+
             #qv-body .pdf-page {
-                transform: scale(0.76);
-                margin-bottom: -72mm;
+                transform: scale(calc((100vw - 24px) / 793.7));
+                transform-origin: top center;
+                margin-bottom: calc(-1122.5px * (1 - ((100vw - 24px) / 793.7)));
             }
         }
 
         @media screen and (max-width: 700px) {
-            .tab-content { padding: 14px; }
+            .tab-content { padding: 12px; }
+
             .viewer-container {
-                justify-content: flex-start;
-                padding-left: 8px;
-                padding-right: 8px;
+                justify-content: center;
+                overflow-x: hidden;
+                padding-left: 0;
+                padding-right: 0;
+                width: 100%;
             }
-            .pdf-page {
-                transform: scale(0.49);
-                transform-origin: top left;
-                margin-left: 0;
-                margin-bottom: -151mm;
-            }
+
             #qv-body {
-                justify-content: flex-start;
-                padding-left: 8px;
+                justify-content: center;
+                overflow-x: hidden;
+                padding-left: 0;
+                padding-right: 0;
             }
+
+            .pdf-page,
             #qv-body .pdf-page {
-                transform: scale(0.53);
-                transform-origin: top left;
-                margin-left: 0;
-                margin-bottom: -139mm;
+                transform-origin: top center;
+                margin-left: auto;
+                margin-right: auto;
             }
         }
 
@@ -545,7 +555,7 @@
             overlay.style.left = '0';
             overlay.style.top = '0';
             overlay.style.width = '210mm';
-            overlay.style.height = '297mm';
+            overlay.style.height = '296.5mm';
             overlay.style.opacity = '0';
             overlay.style.pointerEvents = 'none';
             overlay.style.zIndex = '-1';
@@ -555,11 +565,11 @@
             const page = document.createElement('div');
             page.className = 'pdf-page';
             page.style.width = '210mm';
-            page.style.height = '297mm';
+            page.style.height = '296.5mm';
             page.style.minWidth = '210mm';
-            page.style.minHeight = '297mm';
+            page.style.minHeight = '296.5mm';
             page.style.maxWidth = '210mm';
-            page.style.maxHeight = '297mm';
+            page.style.maxHeight = '296.5mm';
             page.style.margin = '0';
             page.style.boxShadow = 'none';
             page.style.transform = 'none';
@@ -594,9 +604,9 @@
                     scrollX: 0,
                     scrollY: 0,
                     width: page.offsetWidth,
-                    height: page.offsetHeight,
+                    height: Math.min(page.offsetHeight, 1121),
                     windowWidth: page.offsetWidth,
-                    windowHeight: page.offsetHeight
+                    windowHeight: Math.min(page.offsetHeight, 1121)
                 },
                 jsPDF: {
                     unit: 'mm',
@@ -604,7 +614,7 @@
                     orientation: 'portrait',
                     compress: true
                 },
-                pagebreak: { mode: ['avoid-all'] }
+                pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.footer-box', '.client-box'] }
             };
 
             try {
