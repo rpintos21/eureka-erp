@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Eureka! ERP v92</title>
+    <title>Eureka! ERP v93</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -25,19 +25,22 @@
         const db = getFirestore(app);
         window.fb = { db, doc, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction };
 
-        onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
-            window.nextFolio = (d.exists()) ? Number(d.data().lastFolio) : 1000;
-            renderPreview();
-        });
-
+        // Listener Clientes
         onSnapshot(collection(db, "erp_clientes"), (s) => {
             window.clientes = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.name.localeCompare(b.name));
             updateUI();
         });
 
+        // Listener Historial (EL QUE FALTABA)
         onSnapshot(collection(db, "erp_cotizaciones"), (s) => {
             window.historial = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => b.folio - a.folio);
             renderHistory();
+        });
+
+        // Listener Folio
+        onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
+            window.nextFolio = (d.exists()) ? Number(d.data().lastFolio) : 1000;
+            renderPreview();
         });
     </script>
 
@@ -47,7 +50,7 @@
         .tab-content { display: none; width: 100%; padding: 20px; box-sizing: border-box; }
         .tab-content.active { display: block; }
 
-        /* HOJA A4 EUREKA */
+        /* HOJA A4 */
         .pdf-page { 
             background: white !important; 
             color: #1e293b !important; 
@@ -66,8 +69,9 @@
             #pdf-canvas { zoom: 0.42; transform-origin: top center; }
         }
 
+        /* Modal QuickView */
         #quick-view-modal { position: fixed; inset: 0; background: rgba(2,6,23,0.98); z-index: 2000; display: none; flex-direction: column; }
-        #qv-header { background: #0f172a; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        #qv-header { background: #0f172a; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; }
         #qv-body { flex: 1; overflow: auto; padding: 20px; display: flex; justify-content: center; align-items: flex-start; }
 
         .icon-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1e293b; font-size: 18px; color: white; border: 1px solid #334155; }
@@ -98,7 +102,7 @@
                 <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 space-y-3">
                     <input type="date" id="q-date-input" class="input-dark">
                     <select id="q-client" class="input-dark" onchange="checkNewClient(this)"></select>
-                    <input type="text" id="q-desc" placeholder="Nombre del proyecto..." class="input-dark" oninput="renderPreview()">
+                    <input type="text" id="q-desc" placeholder="Referencia / Proyecto..." class="input-dark" oninput="renderPreview()">
                 </div>
                 <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 shadow-2xl">
                     <textarea id="i-name" placeholder="Descripción producto..." class="input-dark h-24 text-sm resize-none"></textarea>
@@ -108,7 +112,7 @@
                         <button onclick="document.getElementById('f-img').click()" class="bg-slate-700 px-4 rounded-xl text-xl">📷</button>
                     </div>
                     <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
-                    <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg">Agregar Ítem</button>
+                    <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg">Añadir Ítem</button>
                 </div>
                 <div id="items-list" class="space-y-2"></div>
                 <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-6 rounded-2xl font-black text-lg uppercase shadow-2xl border-b-4 border-emerald-900">Guardar y Enviar PDF</button>
@@ -117,10 +121,14 @@
         </div>
     </div>
 
-    <div id="sec-hist" class="tab-content"><div id="history-content" class="space-y-4 max-w-2xl mx-auto"></div></div>
+    <div id="sec-hist" class="tab-content">
+        <input type="text" id="search-hist" placeholder="🔍 Buscar por cliente o folio..." class="input-dark mb-6" oninput="renderHistory()">
+        <div id="history-content" class="space-y-4 max-w-2xl mx-auto"></div>
+    </div>
+
     <div id="sec-clients" class="tab-content">
         <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 mb-8 max-w-md mx-auto">
-            <input type="text" id="c-name" placeholder="Nombre Empresa" class="input-dark">
+            <input type="text" id="c-name" placeholder="Empresa" class="input-dark">
             <input type="text" id="c-phone" placeholder="WhatsApp" class="input-dark">
             <input type="text" id="c-address" placeholder="Dirección" class="input-dark">
             <button onclick="saveClient()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase">Guardar Cliente</button>
@@ -141,7 +149,6 @@
             window.scrollTo(0,0);
         }
 
-        // --- MOTOR VISUAL EUREKA ---
         function getBaseHTML(folio, client, date, itemsArr, desc) {
             const c = window.clientes?.find(x => x.name === client) || {};
             const n = itemsArr.reduce((s,i) => s + i.total, 0), v = Math.round(n * 0.19);
@@ -157,24 +164,22 @@
                     </div>
                     <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:30px; display:flex; justify-content:space-between;">
                         <div style="width: 65%;">
-                            <p style="font-size: 8px; color: #64748b; font-weight: 900; text-transform: uppercase; margin:0;">Cotización para:</p>
                             <b style="font-size: 16px; text-transform: uppercase; color: #0f172a;">${client || '---'}</b>
                             <p style="font-size: 11px; margin: 5px 0 0; color: #475569;">${c.address || ''}</p>
                         </div>
                         <div style="width: 30%; text-align: right; border-left: 2px solid #e2e8f0; padding-left: 15px;">
-                            <p style="font-size: 8px; color: #64748b; font-weight: 900; text-transform: uppercase; margin:0;">Contacto:</p>
                             <p style="font-size: 11px; color: #0f172a; font-weight: 600;">${c.phone || ''}</p>
                         </div>
                     </div>
                     <table style="width:100%; border-collapse:collapse;">
-                        <thead><tr style="background:#0f172a; color:white; font-size:10px; text-transform:uppercase;"><th style="padding:12px 10px; width:50px;">Cant</th><th style="padding:12px 10px; text-align:left;">Descripción</th><th style="padding:12px 10px; width:120px; text-align:center;">Referencia</th><th style="padding:12px 10px; text-align:right; width:110px;">Total</th></tr></thead>
+                        <thead><tr style="background:#0f172a; color:white; font-size:10px; text-transform:uppercase;"><th style="padding:12px 10px; width:50px;">Cant</th><th style="padding:12px 10px; text-align:left;">Descripción</th><th style="padding:12px 10px; width:100px; text-align:center;">Referencia</th><th style="padding:12px 10px; text-align:right; width:110px;">Total</th></tr></thead>
                         <tbody>${itemsArr.map(it => `<tr><td style="padding:12px 10px; text-align:center; font-weight:700; font-size:15px;">${it.qty}</td><td style="padding:12px 10px; font-size:13px; line-height:1.4;">${it.name}</td><td style="padding:12px 10px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height: 25mm; border-radius:4px;">` : ''}</td><td style="padding:12px 10px; text-align:right; font-weight:800; font-size:14px;">$${it.total.toLocaleString('es-CL')}</td></tr>`).join('')}</tbody>
                     </table>
                 </div>
                 <div style="margin-top: 50px; border-top: 1px solid #eee; padding-top: 25px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px;">
                         <div style="width: 330px; background: #f0f9ff; border: 1px solid #bae6fd; padding: 15px; border-radius: 12px;">
-                            <b style="font-size: 9px; color: #0369a1; text-transform: uppercase;">PAGO TRANSFERENCIA</b>
+                            <b style="font-size: 9px; color: #0369a1;">PAGO TRANSFERENCIA</b>
                             <div style="font-size: 10px; color: #0c4a6e; line-height: 1.6; margin-top: 8px;"><b>Banco Estado</b> | Vista<br><b>N°:</b> 37370574546 | <b>RUT:</b> 76.823.326-8<br><b>LABORATORIO CREATIVO EUREKA SPA</b></div>
                         </div>
                         <div style="width: 240px; text-align: right;">
@@ -184,22 +189,24 @@
                         </div>
                     </div>
                     <div style="border-top: 3px solid #0f172a; padding-top: 20px; font-size: 11px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
-                        <div><b style="color:#0f172a; font-size: 12px;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Av. Manuel Rodríguez 723, Isla de Maipo | 📧 contacto@eurekalaboratorio.cl</div>
+                        <div><b style="color:#0f172a; font-size: 12px;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Isla de Maipo | 📧 contacto@eurekalaboratorio.cl</div>
                         <div style="text-align: right;">🌐 www.eurekalaboratorio.cl | 📞 +56 9 8827 7250</div>
                     </div>
                 </div>`;
         }
 
         async function openQuickView(h) {
-            document.getElementById('quick-view-modal').style.display = "flex";
+            const modal = document.getElementById('quick-view-modal');
+            modal.style.display = "flex";
             document.getElementById('cloned-pdf-target').innerHTML = getBaseHTML(h.folio, h.client, h.date, h.items, h.desc);
             document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share', h);
             document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save', h);
         }
+
         function closeQuickView() { document.getElementById('quick-view-modal').style.display = "none"; }
 
         async function generateAndSharePDF(folio, clientName, mode, manualData = null) {
-            const d = manualData || { folio: editingId ? window.currentFolio : (window.nextFolio || 1000), client: document.getElementById('q-client').value, date: new Date(document.getElementById('q-date-input').value+'T12:00:00').toLocaleDateString('es-CL'), items: [...items], desc: document.getElementById('q-desc').value };
+            const d = manualData || { folio: editingId ? window.currentFolio : window.nextFolio, client: document.getElementById('q-client').value, date: new Date(document.getElementById('q-date-input').value+'T12:00:00').toLocaleDateString('es-CL'), items: [...items], desc: document.getElementById('q-desc').value };
             const off = document.createElement('div');
             off.style = "position:fixed; left:-10000px; top:0; width:794px;";
             off.innerHTML = `<div class="pdf-page">${getBaseHTML(d.folio, d.client, d.date, d.items, d.desc)}</div>`;
@@ -235,24 +242,57 @@
         function renderHistory() {
             const s = document.getElementById('search-hist').value.toLowerCase();
             const f = (window.historial || []).filter(h => h.client.toLowerCase().includes(s) || h.folio.toString().includes(s));
-            document.getElementById('history-content').innerHTML = f.map(h => `<div class="bg-slate-800 p-5 rounded-2xl border-l-4 border-blue-500 shadow-xl flex justify-between items-center"><div class="truncate mr-4"><b class="text-white uppercase text-sm">${h.client}</b><br><small class="text-blue-400 font-bold">#${h.folio} - ${h.date}</small></div><div class="flex gap-2"><button onclick='openQuickView(${JSON.stringify(h)})' class="icon-btn">🔍</button><button onclick="loadEdit('${h.id}')" class="icon-btn text-blue-400">✏️</button><button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="icon-btn text-red-400">🗑️</button></div></div>`).join('');
+            document.getElementById('history-content').innerHTML = f.map(h => `
+                <div class="bg-slate-800 p-5 rounded-2xl border-l-4 border-blue-500 shadow-xl flex justify-between items-center">
+                    <div class="truncate mr-4"><b class="text-white uppercase text-sm">${h.client}</b><br><small class="text-blue-400 font-bold">#${h.folio} - ${h.date}</small></div>
+                    <div class="flex gap-2">
+                        <button onclick='openQuickView(${JSON.stringify(h)})' class="icon-btn">🔍</button>
+                        <button onclick="loadEdit('${h.id}')" class="icon-btn text-blue-400">✏️</button>
+                        <button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="icon-btn text-red-400">🗑️</button>
+                    </div>
+                </div>`).join('');
         }
+
         function updateUI() {
             const sel = document.getElementById('q-client');
             sel.innerHTML = '<option value="">-- CLIENTE --</option><option value="NEW">➕ NUEVO</option>';
             (window.clientes || []).forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
             document.getElementById('clients-list').innerHTML = (window.clientes || []).map(c => `<div class="bg-slate-800 p-5 rounded-2xl flex justify-between border border-slate-700"><b>${c.name}</b><button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="icon-btn text-red-400">🗑️</button></div>`).join('');
         }
+
         function renderPreview() {
             const d = new Date(document.getElementById('q-date-input').value+'T12:00:00').toLocaleDateString('es-CL');
             document.getElementById('pdf-canvas').innerHTML = getBaseHTML(editingId ? window.currentFolio : (window.nextFolio || 1000), document.getElementById('q-client').value, d, items, document.getElementById('q-desc').value);
-            document.getElementById('items-list').innerHTML = items.map((it, i) => `<div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center mb-2"><span class="truncate w-2/3 text-white text-xs font-bold uppercase">${it.name}</span><button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2 font-bold">✕</button></div>`).join('');
+            document.getElementById('items-list').innerHTML = items.map((it, i) => `<div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center mb-2 shadow-lg"><span class="truncate w-2/3 text-white text-xs font-bold uppercase">${it.name}</span><button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2 font-bold">✕</button></div>`).join('');
         }
-        function addItem() { const n=document.getElementById('i-name').value.toUpperCase(), p=Number(document.getElementById('i-price').value), q=Number(document.getElementById('i-qty').value); if(!n || p<=0) return; items.push({name:n, price:p, qty:q, total:p*q, img:tempImg}); document.getElementById('i-name').value=""; document.getElementById('i-price').value=""; tempImg=null; renderPreview(); }
-        function loadEdit(id) { const h=window.historial.find(x=>x.id===id); items=h.items; editingId=id; window.currentFolio=h.folio; document.getElementById('q-client').value=h.client; document.getElementById('q-date-input').valueAsDate=new Date(); document.getElementById('q-desc').value=h.desc||""; navTo('edit'); renderPreview(); }
-        function handleImg(i) { if(i.files[0]) { const r=new FileReader(); r.onload=e=>{tempImg=e.target.result; renderPreview();}; r.readAsDataURL(i.files[0]); } }
-        async function saveClient() { const data={name:document.getElementById('c-name').value.toUpperCase(), phone:document.getElementById('c-phone').value, address:document.getElementById('c-address').value}; if(data.name) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), data); ['c-name','c-phone','c-address'].forEach(id=>document.getElementById(id).value=''); navTo('edit'); }
-        function checkNewClient(el) { if(el.value==="NEW") { navTo('clients'); el.value=""; } else renderPreview(); }
+
+        function addItem() { 
+            const n = document.getElementById('i-name').value.toUpperCase(), p = Number(document.getElementById('i-price').value), q = Number(document.getElementById('i-qty').value); 
+            if(!n || p <= 0) return; 
+            items.push({ name: n, price: p, qty: q, total: p*q, img: tempImg }); 
+            document.getElementById('i-name').value = ""; document.getElementById('i-price').value = ""; tempImg = null; 
+            renderPreview(); 
+        }
+
+        function loadEdit(id) { 
+            const h = window.historial.find(x => x.id === id); 
+            items = h.items; editingId = id; window.currentFolio = h.folio; 
+            document.getElementById('q-client').value = h.client; 
+            document.getElementById('q-date-input').valueAsDate = new Date(); 
+            document.getElementById('q-desc').value = h.desc || ""; 
+            navTo('edit'); renderPreview(); 
+        }
+
+        function handleImg(i) { if(i.files[0]) { const r = new FileReader(); r.onload = e => { tempImg = e.target.result; renderPreview(); }; r.readAsDataURL(i.files[0]); } }
+        
+        async function saveClient() { 
+            const data = { name: document.getElementById('c-name').value.toUpperCase(), phone: document.getElementById('c-phone').value, address: document.getElementById('c-address').value }; 
+            if(data.name) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), data); 
+            ['c-name','c-phone','c-address'].forEach(id => document.getElementById(id).value = ''); 
+            navTo('edit'); 
+        }
+
+        function checkNewClient(el) { if(el.value === "NEW") { navTo('clients'); el.value=""; } else renderPreview(); }
     </script>
 </body>
 </html>
