@@ -282,48 +282,35 @@
 
         @media screen and (max-width: 950px) {
             .viewer-container {
-                justify-content: center;
-                overflow-x: hidden;
-                padding-left: 8px;
-                padding-right: 8px;
-            }
-
-            .pdf-page {
-                transform: scale(calc((100vw - 32px) / 793.7));
-                transform-origin: top center;
-                margin-bottom: calc(-1122.5px * (1 - ((100vw - 32px) / 793.7)));
-            }
-
-            #qv-body .pdf-page {
-                transform: scale(calc((100vw - 24px) / 793.7));
-                transform-origin: top center;
-                margin-bottom: calc(-1122.5px * (1 - ((100vw - 24px) / 793.7)));
-            }
-        }
-
-        @media screen and (max-width: 700px) {
-            .tab-content { padding: 12px; }
-
-            .viewer-container {
-                justify-content: center;
-                overflow-x: hidden;
-                padding-left: 0;
-                padding-right: 0;
-                width: 100%;
+                justify-content: flex-start;
+                overflow-x: auto;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 14px;
             }
 
             #qv-body {
-                justify-content: center;
-                overflow-x: hidden;
-                padding-left: 0;
-                padding-right: 0;
+                justify-content: flex-start;
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
+                padding: 14px;
             }
 
             .pdf-page,
             #qv-body .pdf-page {
-                transform-origin: top center;
-                margin-left: auto;
-                margin-right: auto;
+                transform: none !important;
+                margin: 0;
+                flex-shrink: 0;
+            }
+        }
+
+        @media screen and (max-width: 700px) {
+            .tab-content {
+                padding: 10px;
+            }
+
+            .viewer-container {
+                min-height: auto;
             }
         }
 
