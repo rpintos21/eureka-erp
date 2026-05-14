@@ -539,24 +539,53 @@
 
         async function generateAndSharePDF(folio, clientName, mode, manualData = null) {
             const d = manualData || getCurrentQuoteData();
-            const temp = document.createElement('div');
 
-            temp.className = 'pdf-page';
-            temp.style.position = 'fixed';
-            temp.style.left = '-10000px';
-            temp.style.top = '0';
-            temp.style.margin = '0';
-            temp.style.boxShadow = 'none';
-            temp.style.transform = 'none';
-            temp.innerHTML = getBaseHTML(d.folio, d.client, d.date, d.items || [], d.desc);
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.left = '0';
+            overlay.style.top = '0';
+            overlay.style.width = '210mm';
+            overlay.style.height = '297mm';
+            overlay.style.opacity = '0';
+            overlay.style.pointerEvents = 'none';
+            overlay.style.zIndex = '-1';
+            overlay.style.background = '#ffffff';
+            overlay.style.overflow = 'hidden';
 
-            document.body.appendChild(temp);
-            await new Promise(r => setTimeout(r, 450));
+            const page = document.createElement('div');
+            page.className = 'pdf-page';
+            page.style.width = '210mm';
+            page.style.height = '297mm';
+            page.style.minWidth = '210mm';
+            page.style.minHeight = '297mm';
+            page.style.maxWidth = '210mm';
+            page.style.maxHeight = '297mm';
+            page.style.margin = '0';
+            page.style.boxShadow = 'none';
+            page.style.transform = 'none';
+            page.style.opacity = '1';
+            page.style.background = '#ffffff';
+            page.innerHTML = getBaseHTML(d.folio, d.client, d.date, d.items || [], d.desc);
+
+            overlay.appendChild(page);
+            document.body.appendChild(overlay);
+
+            const images = Array.from(page.querySelectorAll('img'));
+            await Promise.all(images.map(img => {
+                if (img.complete) return Promise.resolve();
+                return new Promise(resolve => {
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                    setTimeout(resolve, 1200);
+                });
+            }));
+
+            await new Promise(r => setTimeout(r, 350));
 
             const opt = {
                 margin: 0,
                 filename: `COT_${d.folio}.pdf`,
-                image: { type: 'jpeg', quality: 1 },
+                image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: {
                     scale: 2,
                     useCORS: true,
@@ -564,8 +593,10 @@
                     backgroundColor: '#ffffff',
                     scrollX: 0,
                     scrollY: 0,
-                    windowWidth: temp.scrollWidth,
-                    windowHeight: temp.scrollHeight
+                    width: page.offsetWidth,
+                    height: page.offsetHeight,
+                    windowWidth: page.offsetWidth,
+                    windowHeight: page.offsetHeight
                 },
                 jsPDF: {
                     unit: 'mm',
@@ -577,8 +608,10 @@
             };
 
             try {
+                const worker = html2pdf().set(opt).from(page);
+
                 if (mode === 'share' && navigator.share && navigator.canShare) {
-                    const blob = await html2pdf().set(opt).from(temp).output('blob');
+                    const blob = await worker.outputPdf('blob');
                     const file = new File([blob], `COT_${d.folio}.pdf`, { type: 'application/pdf' });
 
                     if (navigator.canShare({ files: [file] })) {
@@ -588,13 +621,13 @@
                             files: [file]
                         });
                     } else {
-                        await html2pdf().set(opt).from(temp).save();
+                        await html2pdf().set(opt).from(page).save();
                     }
                 } else {
-                    await html2pdf().set(opt).from(temp).save();
+                    await worker.save();
                 }
             } finally {
-                document.body.removeChild(temp);
+                document.body.removeChild(overlay);
             }
         }
 
