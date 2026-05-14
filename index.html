@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Eureka! ERP v55 - Infinity Flow</title>
+    <title>Eureka! ERP v56</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -43,308 +44,382 @@
     <style>
         body { font-family: 'Inter', sans-serif; background: #020617; color: #f1f5f9; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         .input-dark { background: #1e293b; border: 1px solid #334155; padding: 12px; border-radius: 10px; width: 100%; color: white; font-size: 14px; }
+        .tab-btn { padding: 14px; flex: 1; text-align: center; font-weight: 800; font-size: 10px; color: #64748b; border-bottom: 3px solid transparent; text-transform: uppercase; }
+        .tab-active { color: #3b82f6; border-bottom-color: #3b82f6; background: #0f172a; }
         
         .main-layout { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        @media (min-width: 1024px) { .main-layout { flex-direction: row; } }
+
+        .editor-side { flex: 1; overflow-y: auto; padding: 15px; background: #0f172a; border-right: 1px solid #1e293b; }
+        @media (min-width: 1024px) { .editor-side { max-width: 450px; } }
+
+        .preview-side { flex: 2; background: #020617; overflow-y: auto; padding: 10px; display: flex; justify-content: center; align-items: flex-start; }
         
+        #pdf-canvas { 
+            background: white; color: #1e293b; 
+            width: 210mm; min-height: auto; /* Altura dinámica para evitar páginas fantasma */
+            padding: 12mm; flex-shrink: 0; 
+            box-sizing: border-box; display: flex; flex-direction: column; 
+        }
+
         @media (max-width: 1024px) {
-            .editor-side { height: 50vh; overflow-y: auto; border-bottom: 2px solid #3b82f6; padding: 15px; }
-            .preview-side { height: 50vh; overflow-y: auto; background: #0f172a; padding: 10px; display: flex; justify-content: center; }
-            #pdf-canvas { transform: scale(0.4); transform-origin: top center; margin-bottom: -160mm; }
+            #pdf-canvas { transform: scale(0.38); transform-origin: top center; margin-bottom: -150mm; }
+            .preview-side { height: 45vh; border-top: 2px solid #3b82f6; flex: none; }
         }
 
-        @media (min-width: 1024px) {
-            .main-layout { flex-direction: row; }
-            .editor-side { width: 450px; overflow-y: auto; padding: 20px; border-right: 1px solid #1e293b; background: #0f172a; }
-            .preview-side { flex: 1; overflow-y: auto; padding: 40px; display: flex; justify-content: center; background: #020617; }
-            #pdf-canvas { width: 210mm; min-height: 297mm; }
-        }
-
-        /* Estilos PDF A4 */
-        #pdf-canvas { background: white; color: #1e293b; padding: 15mm; box-sizing: border-box; display: block; position: relative; }
-        .pdf-page-break { page-break-after: always; }
-        
-        .item-row { border-bottom: 1px solid #e2e8f0; page-break-inside: avoid; }
-        .item-row td { padding: 12px 8px; vertical-align: top; }
-
-        .btn-action { padding: 10px; border-radius: 8px; font-weight: bold; transition: all 0.2s; cursor: pointer; text-align: center; }
-        .btn-action:active { transform: scale(0.95); }
-        
-        .badge-qty { background: #f1f5f9; color: #0f172a; padding: 2px 8px; border-radius: 4px; font-weight: 800; }
+        .btn-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 18px; transition: 0.2s; }
+        .btn-icon:active { transform: scale(0.9); }
     </style>
 </head>
 <body>
 
     <nav class="flex bg-slate-950 border-b border-slate-800 shrink-0">
-        <button onclick="setTab('edit')" id="tab-edit" class="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-blue-500 border-b-2 border-blue-500">Cotizador</button>
-        <button onclick="setTab('hist')" id="tab-hist" class="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Historial</button>
-        <button onclick="setTab('clients')" id="tab-clients" class="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Clientes</button>
+        <button onclick="setTab('edit')" id="tab-edit" class="tab-btn tab-active">Cotizador</button>
+        <button onclick="setTab('hist')" id="tab-hist" class="tab-btn">Historial</button>
+        <button onclick="setTab('clients')" id="tab-clients" class="tab-btn">Clientes</button>
     </nav>
 
     <div class="main-layout">
         <aside class="editor-side space-y-4">
             <div id="panel-edit" class="space-y-4">
-                <div class="grid grid-cols-2 gap-2">
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Fecha</label>
-                        <input type="date" id="q-date-input" class="input-dark">
-                    </div>
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Proyecto</label>
-                        <input type="text" id="q-desc" placeholder="Nombre Proyecto" class="input-dark" oninput="renderPreview()">
-                    </div>
+                <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700 space-y-3">
+                    <input type="date" id="q-date-input" class="input-dark">
+                    <select id="q-client" class="input-dark" onchange="autoFillClient()"></select>
+                    <input type="text" id="q-desc" placeholder="Nombre del Proyecto" class="input-dark" oninput="renderPreview()">
                 </div>
 
-                <div class="space-y-1">
-                    <label class="text-[10px] font-bold text-slate-500 uppercase ml-1">Cliente</label>
-                    <select id="q-client" class="input-dark" onchange="renderPreview()"></select>
-                </div>
-
-                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 space-y-3">
+                <div id="item-box" class="bg-slate-800 p-4 rounded-xl border-2 border-blue-500/20 space-y-3">
                     <div class="flex justify-between items-center">
-                        <h3 class="text-[10px] font-black text-blue-400 uppercase">Añadir Ítem</h3>
-                        <span id="edit-indicator" class="hidden text-[10px] bg-yellow-500 text-black px-2 py-0.5 rounded-full font-bold animate-pulse">MODO EDICIÓN</span>
+                        <span id="item-mode-label" class="text-[10px] font-bold text-blue-400 uppercase">Añadir Ítem</span>
                     </div>
-                    <textarea id="i-name" placeholder="Descripción detallada..." class="input-dark h-24 resize-none"></textarea>
-                    <div class="grid grid-cols-3 gap-2">
-                        <input type="number" id="i-qty" value="1" placeholder="Cant" class="input-dark text-center">
-                        <input type="number" id="i-price" placeholder="$ Precio" class="input-dark col-span-2">
-                    </div>
+                    <textarea id="i-name" placeholder="Descripción..." class="input-dark h-20 resize-none text-sm"></textarea>
                     <div class="flex gap-2">
-                        <button onclick="document.getElementById('f-img').click()" class="bg-slate-700 flex-1 py-3 rounded-xl text-xl">📷 Imagen</button>
-                        <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
-                        <button id="btn-add-main" onclick="addItem()" class="bg-blue-600 flex-[2] py-3 rounded-xl font-black uppercase text-xs">Agregar al listado</button>
+                        <input type="number" id="i-qty" value="1" class="input-dark text-center w-20">
+                        <input type="number" id="i-price" placeholder="$ Precio" class="input-dark flex-1">
+                        <button onclick="document.getElementById('f-img').click()" class="bg-slate-700 px-4 rounded-xl">📷</button>
                     </div>
+                    <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
+                    <button id="btn-item-action" onclick="addItem()" class="w-full bg-blue-600 py-3 rounded-xl font-bold uppercase text-xs">Añadir al listado</button>
+                    <button id="btn-item-cancel" onclick="cancelItemEdit()" class="hidden w-full bg-slate-700 py-2 rounded-xl text-xs">Cancelar Edición</button>
                 </div>
                 
                 <div id="items-list" class="space-y-2"></div>
-                
-                <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-4 rounded-2xl font-black text-xl uppercase shadow-xl mt-4">Guardar y Compartir PDF</button>
+                <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-5 rounded-2xl font-black text-lg uppercase shadow-2xl mt-4">Guardar y Enviar</button>
             </div>
             
-            <!-- Paneles de Historial y Clientes omitidos por brevedad pero funcionales en el código completo -->
-            <div id="panel-hist" class="hidden space-y-3">
-                <input type="text" id="search-hist" placeholder="🔍 Buscar por folio o cliente..." class="input-dark" oninput="renderHistory()">
+            <div id="panel-hist" class="hidden space-y-3 pb-20">
+                <input type="text" id="search-hist" placeholder="🔍 Buscar por nombre o folio..." class="input-dark" oninput="renderHistory()">
                 <div id="history-content"></div>
             </div>
 
-            <div id="panel-clients" class="hidden space-y-4">
-                <div class="bg-slate-800 p-4 rounded-xl space-y-2">
-                    <input type="text" id="c-new" placeholder="Nuevo Nombre de Cliente" class="input-dark">
-                    <button onclick="saveClient()" class="w-full bg-blue-600 py-2 rounded-lg font-bold">GUARDAR CLIENTE</button>
+            <div id="panel-clients" class="hidden space-y-4 pb-20">
+                <div class="bg-slate-800 p-4 rounded-xl space-y-3 border border-slate-700">
+                    <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest" id="client-form-label">Nuevo Cliente</p>
+                    <input type="text" id="c-name" placeholder="Nombre Empresa / Cliente" class="input-dark">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="c-phone" placeholder="WhatsApp / Tel" class="input-dark text-sm">
+                        <input type="text" id="c-mail" placeholder="Email" class="input-dark text-sm">
+                    </div>
+                    <input type="text" id="c-address" placeholder="Dirección" class="input-dark text-sm">
+                    <div class="flex gap-2">
+                        <button id="btn-client-main" onclick="saveClient()" class="flex-1 bg-blue-600 py-3 rounded-lg font-bold">REGISTRAR</button>
+                        <button id="btn-client-cancel" onclick="cancelClientEdit()" class="hidden bg-slate-700 px-4 rounded-lg">✕</button>
+                    </div>
                 </div>
                 <div id="clients-list" class="space-y-2"></div>
             </div>
         </aside>
 
-        <main class="preview-side">
+        <main id="preview-pane" class="preview-side">
             <div id="pdf-canvas">
-                <!-- Cabecera -->
-                <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 3px solid #0f172a; padding-bottom: 10px;">
-                    <img src="logo.png" style="height:70px; width:auto;">
-                    <div style="text-align:right;">
-                        <h2 id="p-folio" style="font-size:16px; font-weight:900; margin:0; color:#0f172a;">COT-1000</h2>
-                        <p style="font-size:11px; margin:2px 0 0; color:#64748b;">FECHA: <b id="p-date" style="color:#0f172a"></b></p>
+                <div style="flex: 1;">
+                    <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 4px solid #0f172a; padding-bottom: 10px;">
+                        <div><img src="logo.png" style="height:75px; width: auto;"></div>
+                        <div style="text-align:right;">
+                            <h2 id="p-folio" style="font-size:18px; font-weight:900; margin:0; color: #0f172a;">---</h2>
+                            <p style="font-size:11px; margin:3px 0 0; color: #64748b; font-weight: 700;">FECHA: <span id="p-date" style="color:#0f172a"></span></p>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; display: flex; justify-content: space-between;">
+                        <div style="width: 60%;">
+                            <p style="font-size: 8px; color: #64748b; font-weight: 800; text-transform: uppercase; margin:0;">Cotización para:</p>
+                            <b id="p-client" style="font-size: 15px; text-transform: uppercase; color: #0f172a;">---</b>
+                            <p id="p-address-val" style="font-size: 10px; margin: 3px 0 0; color: #475569;"></p>
+                        </div>
+                        <div style="width: 35%; text-align: right; border-left: 1px solid #e2e8f0; padding-left: 10px;">
+                            <p style="font-size: 8px; color: #64748b; font-weight: 800; text-transform: uppercase; margin:0;">Contacto:</p>
+                            <p id="p-contact-val" style="font-size: 10px; margin: 3px 0 0; color: #0f172a; font-weight: 600;"></p>
+                        </div>
+                    </div>
+
+                    <table style="width:100%; border-collapse:collapse; table-layout: fixed;">
+                        <thead>
+                            <tr style="background: #0f172a; color: white;">
+                                <th style="padding:10px; width:45px; font-size: 9px;">CANT</th>
+                                <th style="padding:10px; text-align:left; font-size: 9px;">DESCRIPCIÓN</th>
+                                <th style="padding:10px; width:130px; font-size: 9px;">REF.</th>
+                                <th style="padding:10px; text-align:right; width:110px; font-size: 9px;">TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="p-body"></tbody>
+                    </table>
+                    
+                    <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-start; break-inside: avoid;">
+                        <div style="width: 320px; background: #f0f9ff; border: 1px solid #bae6fd; padding: 12px; border-radius: 8px;">
+                            <p style="font-size: 9px; font-weight: 800; color: #0369a1; text-transform: uppercase; margin: 0 0 5px 0; border-bottom: 1px solid #bae6fd;">Datos Transferencia</p>
+                            <div style="font-size: 10px; color: #0c4a6e; line-height: 1.4;">
+                                <b>Banco Estado</b> | Cuenta Vista<br>
+                                <b>Cuenta:</b> 37370574546 | <b>RUT:</b> 76.823.326-8<br>
+                                <b>LABORATORIO CREATIVO EUREKA SPA</b>
+                            </div>
+                        </div>
+                        <div style="width: 240px; background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-size: 11px;"><span>Neto:</span><b id="p-sub">$0</b></div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:6px; border-bottom:1px solid #ddd; padding-bottom:4px; font-size: 11px;"><span>IVA:</span><b id="p-iva">$0</b></div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:9px; font-weight:900; color:#3b82f6;">TOTAL</span><h2 id="p-total" style="font-size:26px; font-weight:900; color:#0f172a; margin:0;">$0</h2></div>
+                        </div>
                     </div>
                 </div>
 
-                <div style="background:#f8fafc; padding:12px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:20px;">
-                    <p style="font-size:9px; font-weight:800; color:#64748b; margin:0;">ATENCIÓN A:</p>
-                    <b id="p-client" style="font-size:16px; text-transform:uppercase; color:#0f172a;">---</b>
-                </div>
-
-                <table style="width:100%; border-collapse:collapse;">
-                    <thead>
-                        <tr style="background:#0f172a; color:white; font-size:9px; text-transform:uppercase;">
-                            <th style="padding:10px; width:40px;">Cant</th>
-                            <th style="padding:10px; text-align:left;">Descripción del Producto</th>
-                            <th style="padding:10px; width:100px;">Imagen</th>
-                            <th style="padding:10px; text-align:right; width:90px;">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody id="p-body"></tbody>
-                </table>
-
-                <div style="margin-top:30px; display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div style="width:280px; background:#f0f9ff; padding:12px; border-radius:8px; border:1px solid #bae6fd; font-size:9px;">
-                        <b style="color:#0369a1; display:block; margin-bottom:4px; border-bottom:1px solid #bae6fd;">PAGO TRANSFERENCIA</b>
-                        <b>Banco Estado</b> | Cuenta Vista<br>
-                        <b>Cuenta:</b> 37370574546 | <b>RUT:</b> 76.823.326-8<br>
-                        <b>LABORATORIO CREATIVO EUREKA SPA</b>
+                <div style="margin-top: 25px; border-top: 2px solid #0f172a; padding-top: 10px; font-size: 9px; color: #475569;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <div style="width: 70%;">
+                            <b>LABORATORIO CREATIVO EUREKA SPA</b> | RUT: 76.823.326-8<br>
+                            Av. Manuel Rodríguez 723, Isla de Maipo | contacto@eurekalaboratorio.cl
+                        </div>
+                        <div style="text-align: right;"><b>FONO:</b> 56 9 88277250</div>
                     </div>
-                    <div style="width:200px; text-align:right;">
-                        <div style="display:flex; justify-content:space-between; font-size:11px; border-bottom:1px solid #eee; padding:4px 0;">
-                            <span>Neto:</span><b id="p-sub">$0</b>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-size:11px; border-bottom:1px solid #eee; padding:4px 0;">
-                            <span>IVA (19%):</span><b id="p-iva">$0</b>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:8px;">
-                            <span style="font-size:10px; font-weight:900; color:#3b82f6;">TOTAL</span>
-                            <h2 id="p-total" style="font-size:24px; font-weight:900; color:#0f172a; margin:0;">$0</h2>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-top:40px; border-top:1px solid #ddd; padding-top:15px; font-size:8px; color:#64748b; display:flex; justify-content:space-between;">
-                    <div><b>EUREKA LAB SPA</b> | Av. Manuel Rodríguez 723, Isla de Maipo | contacto@eurekalaboratorio.cl</div>
-                    <div><b>FONO:</b> +56 9 8827 7250</div>
                 </div>
             </div>
         </main>
     </div>
 
     <script>
-        let items = [], tempImg = null, editingId = null, itemEditingIndex = null;
+        let items = [], tempImg = null, editingId = null, editingItemIdx = null, editingClientId = null;
         document.getElementById('q-date-input').valueAsDate = new Date();
 
         function setTab(t) {
             ['edit', 'hist', 'clients'].forEach(s => {
                 document.getElementById('panel-'+s).classList.toggle('hidden', s !== t);
-                const btn = document.getElementById('tab-'+s);
-                btn.classList.toggle('text-blue-500', s === t); btn.classList.toggle('border-blue-500', s === t);
-                btn.classList.toggle('text-slate-500', s !== t);
+                document.getElementById('tab-'+s).classList.toggle('active', s === t);
             });
+            if(window.innerWidth < 1024) document.getElementById('preview-pane').style.display = (t === 'edit') ? 'flex' : 'none';
         }
 
+        // --- CLIENTES ---
+        function updateUI() {
+            const sel = document.getElementById('q-client'); 
+            sel.innerHTML = '<option value="">-- SELECCIONE CLIENTE --</option>';
+            window.clientes.forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+            
+            document.getElementById('clients-list').innerHTML = window.clientes.map(c => `
+                <div class="bg-slate-800 p-3 rounded flex justify-between items-center border border-slate-700">
+                    <div>
+                        <b class="text-sm uppercase italic">${c.name}</b>
+                        <p class="text-[10px] opacity-50">${c.mail || 'Sin correo'}</p>
+                    </div>
+                    <div class="flex gap-1">
+                        <button onclick="startClientEdit('${c.id}')" class="bg-blue-600/30 text-blue-400 btn-icon">✏️</button>
+                        <button onclick="deleteClientConfirm('${c.id}', '${c.name}')" class="bg-red-900/30 text-red-400 btn-icon">✕</button>
+                    </div>
+                </div>`).join('');
+        }
+
+        async function saveClient() {
+            const data = { 
+                name: document.getElementById('c-name').value.toUpperCase(),
+                phone: document.getElementById('c-phone').value,
+                mail: document.getElementById('c-mail').value,
+                address: document.getElementById('c-address').value
+            };
+            if(!data.name) return alert("Nombre obligatorio");
+
+            try {
+                if(editingClientId) {
+                    await fb.updateDoc(fb.doc(fb.db, 'erp_clientes', editingClientId), data);
+                    cancelClientEdit();
+                } else {
+                    await fb.addDoc(fb.collection(fb.db, "erp_clientes"), data);
+                }
+                clearClientForm();
+            } catch(e) { alert(e.message); }
+        }
+
+        function startClientEdit(id) {
+            const c = window.clientes.find(x => x.id === id);
+            editingClientId = id;
+            document.getElementById('c-name').value = c.name;
+            document.getElementById('c-phone').value = c.phone || '';
+            document.getElementById('c-mail').value = c.mail || '';
+            document.getElementById('c-address').value = c.address || '';
+            document.getElementById('client-form-label').innerText = "Editando Cliente";
+            document.getElementById('btn-client-main').innerText = "GUARDAR CAMBIOS";
+            document.getElementById('btn-client-cancel').classList.remove('hidden');
+        }
+
+        function cancelClientEdit() {
+            editingClientId = null;
+            clearClientForm();
+            document.getElementById('client-form-label').innerText = "Nuevo Cliente";
+            document.getElementById('btn-client-main').innerText = "REGISTRAR";
+            document.getElementById('btn-client-cancel').classList.add('hidden');
+        }
+
+        function clearClientForm() {
+            ['c-name', 'c-phone', 'c-mail', 'c-address'].forEach(id => document.getElementById(id).value = '');
+        }
+
+        async function deleteClientConfirm(id, name) {
+            if(confirm(`¿Eliminar a "${name}"?`)) await fb.deleteDoc(fb.doc(fb.db, 'erp_clientes', id));
+        }
+
+        function autoFillClient() {
+            const name = document.getElementById('q-client').value;
+            const c = window.clientes.find(x => x.name === name);
+            if(c) {
+                renderPreview(); // Actualiza el canvas con los datos del cliente
+            }
+        }
+
+        // --- ITEMS ---
         function handleImg(input) {
             if (!input.files[0]) return;
             const r = new FileReader();
-            r.onload = e => { tempImg = e.target.result; renderPreview(); };
+            r.onload = e => { tempImg = e.target.result; };
             r.readAsDataURL(input.files[0]);
         }
 
         function addItem() {
-            const n = document.getElementById('i-name').value.toUpperCase();
-            const p = Number(document.getElementById('i-price').value);
-            const q = Number(document.getElementById('i-qty').value);
+            const n = document.getElementById('i-name').value.toUpperCase(), p = Number(document.getElementById('i-price').value), q = Number(document.getElementById('i-qty').value);
             if(!n || p <= 0) return alert("Faltan datos");
 
-            const newItem = { name: n, price: p, qty: q, total: p*q, img: tempImg };
+            const itData = { name: n, price: p, qty: q, total: p*q, img: tempImg };
 
-            if(itemEditingIndex !== null) {
-                items[itemEditingIndex] = newItem;
-                itemEditingIndex = null;
-                document.getElementById('btn-add-main').innerText = "Agregar al listado";
-                document.getElementById('edit-indicator').classList.add('hidden');
+            if(editingItemIdx !== null) {
+                items[editingItemIdx] = itData;
+                cancelItemEdit();
             } else {
-                items.push(newItem);
+                items.push(itData);
             }
-
-            document.getElementById('i-name').value = ""; document.getElementById('i-price').value = ""; 
-            document.getElementById('i-qty').value = "1"; tempImg = null;
-            renderPreview();
+            resetItemForm(); renderPreview();
         }
 
-        function editItem(index) {
-            const it = items[index];
+        function startItemEdit(idx) {
+            editingItemIdx = idx; const it = items[idx];
             document.getElementById('i-name').value = it.name;
             document.getElementById('i-price').value = it.price;
             document.getElementById('i-qty').value = it.qty;
             tempImg = it.img;
-            itemEditingIndex = index;
-            document.getElementById('btn-add-main').innerText = "Actualizar Ítem";
-            document.getElementById('edit-indicator').classList.remove('hidden');
-            window.scrollTo({top:0, behavior:'smooth'});
+            document.getElementById('item-mode-label').innerText = "Editando Ítem...";
+            document.getElementById('btn-item-action').innerText = "ACTUALIZAR ÍTEM";
+            document.getElementById('btn-item-cancel').classList.remove('hidden');
         }
 
+        function cancelItemEdit() {
+            editingItemIdx = null; resetItemForm();
+            document.getElementById('item-mode-label').innerText = "Añadir Ítem";
+            document.getElementById('btn-item-action').innerText = "Añadir al listado";
+            document.getElementById('btn-item-cancel').classList.add('hidden');
+        }
+
+        function resetItemForm() { document.getElementById('i-name').value = ""; document.getElementById('i-price').value = ""; document.getElementById('i-qty').value = "1"; tempImg = null; }
+
         function renderPreview() {
-            const d = document.getElementById('q-date-input').value;
-            document.getElementById('p-date').innerText = d ? new Date(d+'T12:00:00').toLocaleDateString('es-CL') : '---';
-            document.getElementById('p-client').innerText = document.getElementById('q-client').value || '---';
+            const dInput = document.getElementById('q-date-input').value;
+            document.getElementById('p-date').innerText = dInput ? new Date(dInput+'T12:00:00').toLocaleDateString('es-CL') : '---';
+            
+            const cName = document.getElementById('q-client').value;
+            const c = window.clientes.find(x => x.name === cName) || {};
+            document.getElementById('p-client').innerText = c.name || '---';
+            document.getElementById('p-contact-val').innerText = (c.phone || c.mail) ? `${c.phone || ''} ${c.mail || ''}` : '';
+            document.getElementById('p-address-val').innerText = c.address || '';
+
             const f = editingId ? window.currentFolio : (window.nextFolio || 1000);
             document.getElementById('p-folio').innerText = `COT-${f} | ${document.getElementById('q-desc').value.toUpperCase() || 'GENERAL'}`;
             
             const b = document.getElementById('p-body');
-            b.innerHTML = items.map((it, idx) => `
-                <tr class="item-row">
-                    <td style="text-align:center;"><span class="badge-qty">${it.qty}</span></td>
-                    <td style="font-size:11px; line-height:1.4; white-space:pre-wrap;"><b>${it.name}</b></td>
-                    <td style="text-align:center;">${it.img ? `<img src="${it.img}" style="max-width:80px; max-height:80px; border-radius:4px;">` : ''}</td>
-                    <td style="text-align:right; font-weight:900; font-size:12px;">$${it.total.toLocaleString('es-CL')}</td>
-                </tr>`).join('');
+            b.innerHTML = items.map(it => `<tr style="border-bottom: 1px solid #e2e8f0; vertical-align: middle;"><td style="padding: 10px; text-align: center; font-weight: 800;">${it.qty}</td><td style="padding: 10px; font-size: 13px; line-height: 1.3; white-space: pre-wrap;">${it.name}</td><td style="padding: 10px; text-align: center;">${it.img ? `<img src="${it.img}" style="max-height: 40mm; max-width: 40mm; object-fit: contain;">` : ''}</td><td style="padding: 10px; text-align: right; font-weight: 900; color: #0f172a;">$${it.total.toLocaleString('es-CL')}</td></tr>`).join('');
             
             const n = items.reduce((s,i) => s + i.total, 0), v = Math.round(n * 0.19);
             document.getElementById('p-sub').innerText = `$${n.toLocaleString('es-CL')}`;
             document.getElementById('p-iva').innerText = `$${v.toLocaleString('es-CL')}`;
             document.getElementById('p-total').innerText = `$${(n + v).toLocaleString('es-CL')}`;
-            
+
             document.getElementById('items-list').innerHTML = items.map((it, i) => `
-                <div class="flex justify-between bg-slate-800/80 p-3 rounded-xl border border-slate-700 items-center">
-                    <div class="flex flex-col">
-                        <span class="text-[10px] font-bold text-blue-400">ITEM #${i+1}</span>
-                        <span class="text-xs uppercase font-medium truncate w-40">${it.name}</span>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="editItem(${i})" class="text-blue-400 p-2">✏️</button>
-                        <button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 p-2">✕</button>
+                <div class="flex justify-between bg-slate-800 p-2 rounded border border-slate-700 items-center">
+                    <span class="text-xs truncate w-2/3 uppercase">${it.name}</span>
+                    <div class="flex gap-1">
+                        <button onclick="startItemEdit(${i})" class="text-blue-400 p-2 text-lg">✏️</button>
+                        <button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 p-2 text-lg">✕</button>
                     </div>
                 </div>`).join('');
         }
 
+        // --- PDF & GUARDADO ---
         async function saveAndSend() {
             const c = document.getElementById('q-client').value; if(!c || items.length === 0) return alert("Faltan datos");
             try {
-                const cfgRef = fb.doc(fb.db, "config", "eureka_erp_v10");
-                let f;
-                await fb.runTransaction(fb.db, async (t) => {
-                    const snap = await t.get(cfgRef);
-                    if (!snap.exists()) { t.set(cfgRef, { lastFolio: 1001 }); f = 1000; }
-                    else { f = snap.data().lastFolio; if(!editingId) t.update(cfgRef, { lastFolio: f + 1 }); }
-                });
-                if(editingId) f = window.currentFolio;
+                let f = window.nextFolio;
+                if(!editingId) {
+                    const cfgRef = fb.doc(fb.db, "config", "eureka_erp_v10");
+                    await fb.runTransaction(fb.db, async (t) => {
+                        const snap = await t.get(cfgRef);
+                        f = snap.exists() ? snap.data().lastFolio : 1000;
+                        t.update(cfgRef, { lastFolio: f + 1 });
+                    });
+                } else { f = window.currentFolio; }
 
                 const data = { folio: f, client: c, items, date: document.getElementById('q-date-input').value, neto: items.reduce((s,i)=>s+i.total,0), desc: document.getElementById('q-desc').value };
                 if(editingId) await fb.setDoc(fb.doc(fb.db, "erp_cotizaciones", editingId), data);
                 else await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), data);
                 
-                const opt = { 
-                    margin: [10, 10], 
-                    filename: `COT_${f}_${c}.pdf`, 
-                    image: { type:'jpeg', quality:0.98 }, 
-                    html2canvas: { scale:2, useCORS:true, letterRendering: true }, 
-                    jsPDF: { unit:'mm', format:'a4', orientation:'portrait' },
-                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-                };
-                
-                const element = document.getElementById('pdf-canvas');
-                const pdfBlob = await html2pdf().from(element).set(opt).output('blob');
+                const opt = { margin: 0, filename: `COT_${f}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+                const worker = html2pdf().from(document.getElementById('pdf-canvas')).set(opt);
+                const pdfBlob = await worker.output('blob');
                 const file = new File([pdfBlob], `COT_${f}_${c}.pdf`, { type: 'application/pdf' });
 
-                if (navigator.share) {
-                    await navigator.share({ files: [file], title: `Cotización #${f}`, text: `Eureka! Lab - Cotización para ${c}` });
-                } else {
-                    html2pdf().from(element).set(opt).save();
-                }
+                if (navigator.share) await navigator.share({ files: [file], title: `COT #${f}` });
+                else worker.save();
+
                 items = []; editingId = null; renderPreview();
-            } catch (e) { alert("Error: " + e.message); }
+            } catch (e) { alert(e.message); }
         }
 
-        // Funciones auxiliares de Clientes e Historial
-        function updateUI() {
-            const sel = document.getElementById('q-client'); sel.innerHTML = '<option value="">-- SELECCIONAR CLIENTE --</option>';
-            window.clientes.forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
-            document.getElementById('clients-list').innerHTML = window.clientes.map(c => `<div class="bg-slate-800 p-3 rounded flex justify-between items-center"><b>${c.name}</b><button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="text-red-500 font-bold p-2">✕</button></div>`).join('');
+        async function previewFromHistory(h) {
+            // Carga rápida temporal para generar PDF
+            const backup = { it: items, c: document.getElementById('q-client').value, d: document.getElementById('q-date-input').value, f: window.currentFolio };
+            items = h.items; document.getElementById('q-client').value = h.client;
+            document.getElementById('q-date-input').value = h.date; window.currentFolio = h.folio;
+            renderPreview();
+            
+            const opt = { margin: 0, filename: `COT_${h.folio}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } };
+            await html2pdf().from(document.getElementById('pdf-canvas')).set(opt).save();
+
+            // Restaurar lo que estaba haciendo
+            items = backup.it; document.getElementById('q-client').value = backup.c;
+            document.getElementById('q-date-input').value = backup.d; window.currentFolio = backup.f;
+            renderPreview();
         }
-        async function saveClient() {
-            const n = document.getElementById('c-new').value.toUpperCase();
-            if(n) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), { name: n });
-            document.getElementById('c-new').value = "";
-        }
+
         function renderHistory() {
             const s = document.getElementById('search-hist').value.toLowerCase();
             const f = window.historial.filter(h => h.client.toLowerCase().includes(s) || h.folio.toString().includes(s));
             document.getElementById('history-content').innerHTML = f.map(h => `
-                <div class="bg-slate-800 p-3 rounded mb-2 border-l-4 border-blue-500">
-                    <div class="flex justify-between items-start">
-                        <div><p class="text-[9px] opacity-50">#${h.folio}</p><b class="text-xs uppercase">${h.client}</b></div>
-                        <b class="text-emerald-400 text-xs">$${Math.round(h.neto*1.19).toLocaleString()}</b>
-                    </div>
-                    <div class="flex gap-2 mt-2">
-                        <button onclick='loadEdit("${h.id}")' class="bg-blue-600/20 text-blue-400 p-2 rounded flex-1 text-[10px] font-bold">EDITAR</button>
-                        <button onclick='loadHistoryPreview(${JSON.stringify(h)})' class="bg-slate-700 p-2 rounded flex-1 text-[10px] font-bold">PDF</button>
+                <div class="bg-slate-800 p-4 rounded mb-3 border-l-4 border-blue-500 shadow-lg">
+                    <p class="text-[9px] opacity-40">Folio: ${h.folio}</p>
+                    <p class="font-bold text-xs uppercase text-blue-100">${h.client}</p>
+                    <div class="flex justify-between items-center mt-3">
+                        <b class="text-emerald-400">$${Math.round(h.neto*1.19).toLocaleString()}</b>
+                        <div class="flex gap-1">
+                            <button onclick='previewFromHistory(${JSON.stringify(h)})' class="bg-slate-700 btn-icon">🔍</button>
+                            <button onclick="loadEdit('${h.id}')" class="bg-blue-600 btn-icon">✏️</button>
+                            <button onclick="if(confirm('¿Eliminar permanente?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="bg-red-900/50 btn-icon text-red-400">🗑️</button>
+                        </div>
                     </div>
                 </div>`).join('');
         }
+
         function loadEdit(id) {
             const h = window.historial.find(x => x.id === id);
             items = h.items; editingId = id; window.currentFolio = h.folio;
