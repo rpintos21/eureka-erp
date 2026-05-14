@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Eureka! ERP v78</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=2.0">
+    <title>Eureka! ERP v79</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -47,23 +47,34 @@
         .tab-content { display: none; width: 100%; padding: 20px; }
         .tab-content.active { display: block; }
 
+        /* Estilo Hoja A4 */
+        #pdf-canvas { 
+            background: white; 
+            color: #1e293b; 
+            width: 210mm; 
+            min-height: 297mm; 
+            padding: 15mm; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.5); 
+            box-sizing: border-box; 
+            margin: 0 auto;
+        }
+
+        /* Preliminar Adaptativo en Móvil */
         @media (max-width: 1024px) {
-            #pdf-inspection-zone { width: 100%; overflow-x: auto; background: #0f172a; padding: 20px 10px; border-radius: 20px; margin-top: 20px; }
-            .pdf-canvas-style { width: 210mm; min-height: 296mm; transform: scale(0.38); transform-origin: top center; margin: 0 auto; margin-bottom: -180mm; }
+            #preliminar-container { width: 100%; overflow: hidden; background: #020617; padding: 10px 0; }
+            #pdf-canvas { zoom: calc(100vw / 230mm); transform: none; }
         }
 
-        @media (min-width: 1025px) {
-            #sec-edit { display: flex !important; flex-direction: row; gap: 30px; }
-            .editor-side { width: 450px; flex-shrink: 0; }
-            .preview-side { flex: 1; display: flex; justify-content: center; }
-            .pdf-canvas-style { width: 210mm; min-height: 297mm; }
-        }
+        /* Modal Lupa (Quick View) */
+        #quick-view-modal { position: fixed; inset: 0; background: #020617; z-index: 500; display: none; flex-direction: column; }
+        #qv-header { background: #0f172a; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; }
+        #qv-body { flex: 1; overflow: auto; padding: 20px; -webkit-overflow-scrolling: touch; }
+        #cloned-pdf-wrapper { width: fit-content; margin: 0 auto; }
+        #cloned-pdf-wrapper #pdf-canvas { zoom: 1 !important; transform: none !important; }
 
-        .pdf-canvas-style { background: white; color: #1e293b; padding: 15mm; display: flex; flex-direction: column; box-shadow: 0 0 50px rgba(0,0,0,0.5); box-sizing: border-box; }
-        .icon-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1e293b; font-size: 18px; color: white; }
-        
-        /* Modal QuickView */
-        #quick-view-modal { position: fixed; inset: 0; background: rgba(2, 6, 23, 0.98); z-index: 200; display: none; overflow-y: auto; padding: 20px; }
+        .icon-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1e293b; font-size: 20px; color: white; }
     </style>
 </head>
 <body>
@@ -75,84 +86,84 @@
     </nav>
 
     <div id="quick-view-modal">
-        <div class="flex justify-between items-center mb-6 sticky top-0 bg-slate-950/80 p-4 rounded-xl z-50">
-            <b id="qv-title" class="text-blue-400 uppercase tracking-widest">Vista Previa</b>
-            <button onclick="closeQuickView()" class="bg-red-600 text-white px-6 py-2 rounded-full font-bold">CERRAR</button>
-        </div>
-        <div id="qv-container" class="flex justify-center">
+        <div id="qv-header">
+            <button onclick="closeQuickView()" class="text-white text-2xl font-bold p-2">✕</button>
+            <div class="flex gap-4">
+                <button id="qv-share-btn" class="icon-btn text-emerald-400">🔗</button>
+                <button id="qv-download-btn" class="icon-btn text-blue-400">⬇️</button>
             </div>
+        </div>
+        <div id="qv-body">
+            <div id="cloned-pdf-wrapper"></div>
+        </div>
     </div>
 
     <div id="sec-edit" class="tab-content active">
-        <div class="editor-side space-y-4">
-            <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 space-y-3">
-                <input type="date" id="q-date-input" class="input-dark">
-                <select id="q-client" class="input-dark" onchange="checkNewClient(this)"></select>
-                <input type="text" id="q-desc" placeholder="Proyecto..." class="input-dark" oninput="renderPreview()">
-            </div>
-            <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 shadow-2xl">
-                <textarea id="i-name" placeholder="Descripción..." class="input-dark h-24 text-sm resize-none"></textarea>
-                <div class="flex gap-3">
-                    <input type="number" id="i-qty" value="1" class="input-dark text-center w-24">
-                    <input type="number" id="i-price" placeholder="$ Precio" class="input-dark flex-1">
-                    <button onclick="document.getElementById('f-img').click()" class="bg-slate-700 px-5 rounded-xl">📷</button>
+        <div class="max-w-4xl mx-auto flex flex-col lg:flex-row gap-8">
+            <div class="lg:w-[420px] space-y-4">
+                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 space-y-3">
+                    <input type="date" id="q-date-input" class="input-dark">
+                    <select id="q-client" class="input-dark" onchange="checkNewClient(this)"></select>
+                    <input type="text" id="q-desc" placeholder="Proyecto..." class="input-dark" oninput="renderPreview()">
                 </div>
-                <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
-                <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase shadow-lg">Agregar al listado</button>
+                <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 shadow-2xl">
+                    <textarea id="i-name" placeholder="Descripción..." class="input-dark h-24 text-sm resize-none"></textarea>
+                    <div class="flex gap-3">
+                        <input type="number" id="i-qty" value="1" class="input-dark text-center w-20">
+                        <input type="number" id="i-price" placeholder="$ Precio" class="input-dark flex-1">
+                        <button onclick="document.getElementById('f-img').click()" class="bg-slate-700 px-4 rounded-xl">📷</button>
+                    </div>
+                    <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
+                    <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase shadow-lg">Agregar Ítem</button>
+                </div>
+                <div id="items-list" class="space-y-2"></div>
+                <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-6 rounded-2xl font-black text-lg uppercase shadow-2xl border-b-4 border-emerald-900">Guardar y Enviar</button>
             </div>
-            <div id="items-list" class="space-y-2"></div>
-            <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-6 rounded-2xl font-black text-lg uppercase shadow-2xl mt-4 border-b-4 border-emerald-900">Guardar y Compartir PDF</button>
-        </div>
 
-        <div id="pdf-inspection-zone" class="preview-side">
-            <div id="pdf-canvas" class="pdf-canvas-style">
-                <div style="flex: 1;">
-                    <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 4px solid #0f172a; padding-bottom: 15px;">
-                        <img src="logo.png" style="height:70px;">
-                        <div style="text-align:right;">
-                            <h2 id="p-folio" style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-1000</h2>
-                            <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b id="p-date" style="color:#0f172a"></b></p>
-                        </div>
-                    </div>
-                    <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:30px; display:flex; justify-content:space-between;">
-                        <div style="width: 65%;">
-                            <p style="font-size: 8px; color: #64748b; font-weight: 900; text-transform: uppercase; margin:0;">Cotización para:</p>
-                            <b id="p-client" style="font-size: 16px; text-transform: uppercase; color: #0f172a;">---</b>
-                            <p id="p-address-val" style="font-size: 11px; margin: 5px 0 0; color: #475569;"></p>
-                        </div>
-                        <div style="width: 30%; text-align: right; border-left: 1px solid #e2e8f0; padding-left: 15px;">
-                            <p id="p-contact-val" style="font-size: 11px; color: #0f172a; font-weight: 600; white-space: pre-line; margin-top: 5px;"></p>
-                        </div>
-                    </div>
-                    <table style="width:100%; border-collapse:collapse;">
-                        <thead>
-                            <tr style="background:#0f172a; color:white; font-size:10px; text-transform:uppercase;">
-                                <th style="padding:12px 10px; width:50px;">Cant</th>
-                                <th style="padding:12px 10px; text-align:left;">Descripción</th>
-                                <th style="padding:12px 10px; width:130px; text-align:center;">Referencia</th>
-                                <th style="padding:12px 10px; text-align:right; width:110px;">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody id="p-body"></tbody>
-                    </table>
-                </div>
-                <div style="margin-top: 50px; border-top: 1px solid #eee; padding-top: 25px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px;">
-                        <div style="width: 330px; background: #f0f9ff; border: 1px solid #bae6fd; padding: 15px; border-radius: 12px;">
-                            <b style="font-size: 9px; color: #0369a1; text-transform: uppercase;">PAGO / TRANSFERENCIA</b>
-                            <div style="font-size: 10px; color: #0c4a6e; line-height: 1.6; margin-top: 8px;">
-                                <b>Banco Estado</b> | Cuenta Vista<br><b>N°:</b> 37370574546 | <b>RUT:</b> 76.823.326-8<br><b>LABORATORIO CREATIVO EUREKA SPA</b>
+            <div id="preliminar-container" class="flex-1">
+                <div id="pdf-canvas">
+                    <div style="flex: 1;">
+                        <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 4px solid #0f172a; padding-bottom: 15px;">
+                            <img src="logo.png" style="height:70px;">
+                            <div style="text-align:right;">
+                                <h2 id="p-folio" style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-1000</h2>
+                                <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b id="p-date" style="color:#0f172a"></b></p>
                             </div>
                         </div>
-                        <div style="width: 240px; text-align: right;">
-                            <div style="display:flex; justify-content:space-between; font-size: 13px; margin-bottom: 5px;"><span>Neto:</span><b id="p-sub"></b></div>
-                            <div style="display:flex; justify-content:space-between; font-size: 13px; margin-bottom: 10px; border-bottom: 2px solid #ddd; padding-bottom: 5px;"><span>IVA (19%):</span><b id="p-iva"></b></div>
-                            <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:11px; font-weight:900; color:#3b82f6;">TOTAL</span><h2 id="p-total" style="font-size:32px; font-weight:900; color:#0f172a; margin:0;"></h2></div>
+                        <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:30px; display:flex; justify-content:space-between;">
+                            <div style="width: 65%;">
+                                <p style="font-size: 8px; color: #64748b; font-weight: 900; text-transform: uppercase; margin:0;">Cotización para:</p>
+                                <b id="p-client" style="font-size: 16px; text-transform: uppercase; color: #0f172a;">---</b>
+                                <p id="p-address-val" style="font-size: 11px; margin: 5px 0 0; color: #475569;"></p>
+                            </div>
+                            <div style="width: 30%; text-align: right; border-left: 2px solid #e2e8f0; padding-left: 15px;">
+                                <p style="font-size: 8px; color: #64748b; font-weight: 900; text-transform: uppercase; margin:0;">Contacto:</p>
+                                <p id="p-contact-val" style="font-size: 11px; color: #0f172a; font-weight: 600; white-space: pre-line; margin-top: 5px;"></p>
+                            </div>
                         </div>
+                        <table style="width:100%; border-collapse:collapse;">
+                            <thead><tr style="background:#0f172a; color:white; font-size:10px; text-transform:uppercase;"><th style="padding:12px 10px; width:50px;">Cant</th><th style="padding:12px 10px; text-align:left;">Descripción</th><th style="padding:12px 10px; width:130px; text-align:center;">Referencia</th><th style="padding:12px 10px; text-align:right; width:110px;">Total</th></tr></thead>
+                            <tbody id="p-body"></tbody>
+                        </table>
                     </div>
-                    <div style="border-top: 3px solid #0f172a; padding-top: 20px; font-size: 11px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
-                        <div><b style="color:#0f172a; font-size: 12px;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Av. Manuel Rodríguez 723, Isla de Maipo | 📧 contacto@eurekalaboratorio.cl</div>
-                        <div style="text-align: right;">🌐 www.eurekalaboratorio.cl | 📞 +56 9 8827 7250</div>
+                    <div style="margin-top: 50px; border-top: 1px solid #eee; padding-top: 25px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px;">
+                            <div style="width: 330px; background: #f0f9ff; border: 1px solid #bae6fd; padding: 15px; border-radius: 12px;">
+                                <b style="font-size: 9px; color: #0369a1; text-transform: uppercase;">DATOS DE TRANSFERENCIA</b>
+                                <div style="font-size: 11px; color: #0c4a6e; line-height: 1.6; margin-top: 8px;">
+                                    <b>Banco Estado</b> | Vista<br><b>N°:</b> 37370574546 | <b>RUT:</b> 76.823.326-8<br><b>LABORATORIO CREATIVO EUREKA SPA</b>
+                                </div>
+                            </div>
+                            <div style="width: 240px; text-align: right;">
+                                <div style="display:flex; justify-content:space-between; font-size: 13px;"><span>Neto:</span><b id="p-sub"></b></div>
+                                <div style="display:flex; justify-content:space-between; font-size: 13px; margin-bottom: 10px; border-bottom: 2px solid #ddd; padding-bottom: 5px;"><span>IVA:</span><b id="p-iva"></b></div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:11px; font-weight:900; color:#3b82f6;">TOTAL</span><h2 id="p-total" style="font-size:32px; font-weight:900; color:#0f172a; margin:0;"></h2></div>
+                            </div>
+                        </div>
+                        <div style="border-top: 3px solid #0f172a; padding-top: 20px; font-size: 11px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
+                            <div><b style="color:#0f172a; font-size: 12px;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Isla de Maipo | 📧 contacto@eurekalaboratorio.cl</div>
+                            <div style="text-align: right;">🌐 www.eurekalaboratorio.cl | 📞 +56 9 8827 7250</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -161,18 +172,17 @@
 
     <div id="sec-hist" class="tab-content">
         <input type="text" id="search-hist" placeholder="🔍 Buscar..." class="input-dark mb-6" oninput="renderHistory()">
-        <div id="history-content" class="space-y-4"></div>
+        <div id="history-content" class="space-y-4 max-w-2xl mx-auto"></div>
     </div>
 
     <div id="sec-clients" class="tab-content">
-        <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 mb-8">
+        <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 mb-8 max-w-md mx-auto">
             <input type="text" id="c-name" placeholder="Empresa" class="input-dark">
-            <input type="text" id="c-phone" placeholder="WhatsApp" class="input-dark">
-            <input type="text" id="c-mail" placeholder="Email" class="input-dark">
-            <input type="text" id="c-address" placeholder="Dirección" class="input-dark">
+            <input type="text" id="c-phone" placeholder="WhatsApp" class="input-dark text-sm">
+            <input type="text" id="c-address" placeholder="Dirección" class="input-dark text-sm">
             <button onclick="saveClient()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase">Guardar Cliente</button>
         </div>
-        <div id="clients-list" class="space-y-4"></div>
+        <div id="clients-list" class="space-y-4 max-w-md mx-auto"></div>
     </div>
 
     <script>
@@ -185,40 +195,57 @@
                 const btn = document.getElementById('m-'+s);
                 btn.classList.toggle('text-blue-500', s === sec);
                 btn.classList.toggle('border-blue-500', s === sec);
-                btn.classList.toggle('text-slate-500', s !== sec);
             });
             window.scrollTo(0,0);
         }
 
-        // --- QUICK VIEW (LUPA) ---
+        // --- VISOR LUPA ---
         function openQuickView(h) {
             const modal = document.getElementById('quick-view-modal');
-            const container = document.getElementById('qv-container');
-            document.getElementById('qv-title').innerText = `Visualizando: COT-${h.folio}`;
+            const wrapper = document.getElementById('cloned-pdf-wrapper');
             
-            // Backup temporal para no ensuciar el editor
-            const backup = { items: [...items], client: document.getElementById('q-client').value, desc: document.getElementById('q-desc').value, folio: window.currentFolio, id: editingId };
+            // Backup
+            const backup = { it: [...items], c: document.getElementById('q-client').value, f: window.currentFolio, id: editingId };
             
-            // Cargar datos en el canvas
-            items = h.items; document.getElementById('q-client').value = h.client;
-            document.getElementById('q-desc').value = h.desc || ""; window.currentFolio = h.folio;
+            // Cargar datos
+            items = h.items; document.getElementById('q-client').value = h.client; window.currentFolio = h.folio;
             renderPreview();
             
-            // Clonar el canvas al modal
-            container.innerHTML = "";
+            // Clonar
+            wrapper.innerHTML = "";
             const clone = document.getElementById('pdf-canvas').cloneNode(true);
-            clone.id = "cloned-pdf";
-            container.appendChild(clone);
+            wrapper.appendChild(clone);
             
-            modal.style.display = "block";
+            // Configurar botones
+            document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share');
+            document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save');
             
-            // Restaurar el editor original inmediatamente
-            items = backup.items; document.getElementById('q-client').value = backup.client;
-            document.getElementById('q-desc').value = backup.desc; window.currentFolio = backup.folio; editingId = backup.id;
+            modal.style.display = "flex";
+            
+            // Restaurar backup
+            items = backup.it; document.getElementById('q-client').value = backup.c; window.currentFolio = backup.f; editingId = backup.id;
             renderPreview();
         }
 
         function closeQuickView() { document.getElementById('quick-view-modal').style.display = "none"; }
+
+        // --- FUNCIONES CORE ---
+        async function generateAndSharePDF(folio, clientName, mode) {
+            const element = mode === 'share' || mode === 'save' ? document.getElementById('pdf-canvas') : document.getElementById('cloned-pdf-wrapper').firstChild;
+            const opt = { 
+                margin: 0, 
+                filename: `COT_${folio}.pdf`, 
+                image: { type: 'jpeg', quality: 1.0 }, 
+                html2canvas: { scale: 2.5, useCORS: true }, 
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            const worker = html2pdf().from(element).set(opt);
+            if(mode === 'share' && navigator.share) {
+                const pdfBlob = await worker.output('blob');
+                const file = new File([pdfBlob], `COT_${folio}.pdf`, { type: 'application/pdf' });
+                await navigator.share({ files: [file], title: `COT #${folio}` });
+            } else { await worker.save(); }
+        }
 
         function renderHistory() {
             const s = document.getElementById('search-hist').value.toLowerCase();
@@ -228,32 +255,10 @@
                     <div><b class="text-white uppercase text-sm">${h.client}</b><br><small class="text-blue-400 font-bold">#${h.folio}</small></div>
                     <div class="flex gap-2">
                         <button onclick='openQuickView(${JSON.stringify(h)})' class="icon-btn">🔍</button>
-                        <button onclick='shareFromHistory(${JSON.stringify(h)})' class="icon-btn text-emerald-400">🔗</button>
                         <button onclick="loadEdit('${h.id}')" class="icon-btn text-blue-400">✏️</button>
                         <button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="icon-btn text-red-400">🗑️</button>
                     </div>
                 </div>`).join('');
-        }
-
-        async function shareFromHistory(h) {
-            const backup = { it: [...items], c: document.getElementById('q-client').value, f: window.currentFolio, id: editingId };
-            items = h.items; document.getElementById('q-client').value = h.client; window.currentFolio = h.folio;
-            renderPreview();
-            setTimeout(async () => {
-                await generateAndSharePDF(h.folio, h.client, 'share');
-                items = backup.it; document.getElementById('q-client').value = backup.c; window.currentFolio = backup.f; editingId = backup.id;
-                renderPreview();
-            }, 600);
-        }
-
-        async function generateAndSharePDF(folio, clientName, mode='save') {
-            const opt = { margin: 0, filename: `COT_${folio}.pdf`, image: { type: 'jpeg', quality: 1.0 }, html2canvas: { scale: 2.5, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4' } };
-            const worker = html2pdf().from(document.getElementById('pdf-canvas')).set(opt);
-            if(mode === 'share' && navigator.share) {
-                const pdfBlob = await worker.output('blob');
-                const file = new File([pdfBlob], `COT_${folio}.pdf`, { type: 'application/pdf' });
-                await navigator.share({ files: [file], title: `COT #${folio}` });
-            } else { await worker.save(); }
         }
 
         async function saveAndSend() {
@@ -273,9 +278,10 @@
             items = []; editingId = null; renderPreview();
         }
 
+        // --- SOPORTE ---
         function updateUI() {
             const sel = document.getElementById('q-client');
-            sel.innerHTML = '<option value="">-- SELECCIONAR --</option><option value="NEW">➕ NUEVO</option>';
+            sel.innerHTML = '<option value="">-- CLIENTE --</option><option value="NEW">➕ NUEVO</option>';
             window.clientes.forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
             document.getElementById('clients-list').innerHTML = window.clientes.map(c => `<div class="bg-slate-800 p-5 rounded-2xl flex justify-between border border-slate-700"><b>${c.name}</b><button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="icon-btn text-red-400">🗑️</button></div>`).join('');
         }
