@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Eureka! ERP v61</title>
+    <title>Eureka! ERP v63 - Zoom Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -45,60 +45,64 @@
         body { font-family: 'Inter', sans-serif; background: #020617; color: #f1f5f9; margin: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         .input-dark { background: #1e293b; border: 1px solid #334155; padding: 12px; border-radius: 10px; width: 100%; color: white; font-size: 16px; outline: none; }
         
-        .main-layout { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .view-container { flex: 1; position: relative; overflow: hidden; }
+        .page-view { position: absolute; inset: 0; display: flex; flex-direction: column; transition: transform 0.3s ease-in-out; }
+        .active-page { transform: translateX(0); }
+        .hidden-page { transform: translateX(100%); }
 
-        /* VISTA MÓVIL PANTALLA COMPLETA */
+        .scroll-area { flex: 1; overflow-y: auto; padding: 15px; -webkit-overflow-scrolling: touch; }
+
         @media (max-width: 1024px) {
-            .editor-side, .preview-side { width: 100%; height: 100%; overflow-y: auto; flex-shrink: 0; transition: transform 0.3s ease; }
-            .content-wrapper { display: flex; width: 200%; height: 100%; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-            .show-preview { transform: translateX(-50%); }
-            
-            #pdf-canvas { transform: scale(0.44); transform-origin: top center; margin-top: 20px; }
-            .mobile-nav-sub { display: flex; background: #1e293b; padding: 5px; border-radius: 12px; margin: 10px; gap: 5px; }
-            .sub-btn { flex: 1; padding: 8px; text-align: center; font-size: 11px; font-weight: 800; border-radius: 8px; color: #64748b; }
-            .sub-active { background: #3b82f6; color: white; }
+            .mobile-only-nav { display: flex; background: #0f172a; padding: 8px; gap: 8px; border-bottom: 1px solid #1e293b; }
+            .nav-pill { flex: 1; padding: 10px; text-align: center; border-radius: 8px; font-size: 10px; font-weight: 900; color: #64748b; background: #1e293b; }
+            .pill-active { background: #3b82f6; color: white; }
+            /* Zoom móvil */
+            #pdf-wrap { width: 100%; height: 100%; overflow: auto; display: flex; justify-content: center; align-items: flex-start; background: #020617; }
+            #pdf-canvas { transform: scale(var(--zoom-level, 0.42)); transform-origin: top center; margin-bottom: -150mm; }
         }
 
-        /* VISTA PC */
         @media (min-width: 1025px) {
-            .main-layout { flex-direction: row; }
-            .content-wrapper { display: flex; width: 100%; height: 100%; }
-            .editor-side { width: 420px; border-right: 1px solid #1e293b; overflow-y: auto; }
-            .preview-side { flex: 1; overflow-y: auto; display: flex; justify-content: center; padding: 40px; }
-            #pdf-canvas { width: 210mm; min-height: 297mm; }
-            .mobile-nav-sub { display: none; }
+            .mobile-only-nav { display: none; }
+            .page-view { position: relative; transform: none; flex-direction: row; }
+            .editor-side { width: 420px; border-right: 1px solid #1e293b; background: #0f172a; }
+            .preview-side { flex: 1; background: #020617; display: flex; justify-content: center; }
+            #pdf-canvas { width: 210mm; min-height: 297mm; transform: scale(var(--zoom-level, 1)); transform-origin: top center; }
+            #pdf-wrap { width: 100%; height: 100%; overflow: auto; display: flex; justify-content: center; padding: 20px; }
         }
 
-        #pdf-canvas { 
-            background: white; color: #1e293b; 
-            width: 210mm; padding: 15mm; flex-shrink: 0; 
-            box-sizing: border-box; display: flex; flex-direction: column;
-        }
-
-        .btn-ctrl { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
+        #pdf-canvas { background: white; color: #1e293b; width: 210mm; padding: 15mm; flex-shrink: 0; box-sizing: border-box; display: flex; flex-direction: column; transition: transform 0.2s ease-out; }
+        
+        /* Controles de Zoom */
+        .zoom-controls { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 100; }
+        .btn-zoom { width: 50px; height: 50px; background: #3b82f6; color: white; border-radius: 25px; font-size: 24px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
+        
+        .btn-icon { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: 0.2s; }
+        .tab-btn { flex: 1; padding: 15px; text-align: center; font-weight: 800; font-size: 11px; text-transform: uppercase; color: #64748b; }
+        .tab-active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
     </style>
 </head>
 <body>
 
-    <nav class="flex bg-slate-950 shrink-0">
-        <button onclick="setTab('edit')" id="tab-edit" class="flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-blue-500 border-b-2 border-blue-500">Cotizar</button>
-        <button onclick="setTab('hist')" id="tab-hist" class="flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-slate-500">Historial</button>
-        <button onclick="setTab('clients')" id="tab-clients" class="flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-slate-500">Clientes</button>
+    <nav class="flex bg-slate-950 shrink-0 border-b border-slate-800">
+        <button onclick="changeSection('edit')" id="m-edit" class="tab-btn tab-active">Cotizador</button>
+        <button onclick="changeSection('hist')" id="m-hist" class="tab-btn">Historial</button>
+        <button onclick="changeSection('clients')" id="m-clients" class="tab-btn">Clientes</button>
     </nav>
 
-    <div class="main-layout" id="panel-container">
-        <div id="panel-edit" class="h-full">
-            <div class="mobile-nav-sub">
-                <button onclick="switchView('data')" id="btn-view-data" class="sub-btn sub-active">DATOS INGRESO</button>
-                <button onclick="switchView('preview')" id="btn-view-preview" class="sub-btn">VISTA PREVIA PDF</button>
+    <div class="view-container">
+        
+        <div id="sec-edit" class="page-view active-page">
+            <div class="mobile-only-nav">
+                <button onclick="switchSubView('data')" id="p-data" class="nav-pill pill-active">DATOS INGRESO</button>
+                <button onclick="switchSubView('pdf')" id="p-pdf" class="nav-pill">VISTA PREVIA PDF</button>
             </div>
-
-            <div class="content-wrapper" id="swipe-wrapper">
-                <aside class="editor-side p-4 space-y-4 bg-slate-900">
+            
+            <div class="flex flex-1 overflow-hidden" id="cotizador-layout">
+                <div class="editor-side scroll-area space-y-4" id="sub-data">
                     <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700 space-y-2">
                         <input type="date" id="q-date-input" class="input-dark">
                         <select id="q-client" class="input-dark border-2 border-blue-500/30" onchange="checkNewClient(this)"></select>
-                        <input type="text" id="q-desc" placeholder="Nombre Proyecto (Opcional)" class="input-dark" oninput="renderPreview()">
+                        <input type="text" id="q-desc" placeholder="Nombre Proyecto (Ej: Letreros MUNI)" class="input-dark" oninput="renderPreview()">
                     </div>
 
                     <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-3">
@@ -109,101 +113,95 @@
                             <button onclick="document.getElementById('f-img').click()" class="bg-slate-700 px-3 rounded-lg">📷</button>
                         </div>
                         <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
-                        <button id="btn-item-action" onclick="addItem()" class="w-full bg-blue-600 py-3 rounded-lg font-black text-xs uppercase shadow-lg shadow-blue-900/50">Añadir al listado</button>
+                        <button id="btn-item-action" onclick="addItem()" class="w-full bg-blue-600 py-3 rounded-lg font-black text-xs uppercase">Añadir al listado</button>
                     </div>
-                    
-                    <div id="items-list" class="space-y-1"></div>
-                    <button onclick="saveAndSend()" class="w-full bg-emerald-600 py-5 rounded-2xl font-black text-lg uppercase shadow-2xl border-b-4 border-emerald-900">Guardar y Enviar</button>
-                </aside>
-
-                <main class="preview-side">
-                    <div id="pdf-canvas">
-                        <div style="flex: 1;">
-                            <div style="display:flex; justify-content:space-between; margin-bottom: 20px; border-bottom: 4px solid #0f172a; padding-bottom: 10px;">
-                                <img src="logo.png" style="height:70px;">
-                                <div style="text-align:right;">
-                                    <h2 id="p-folio" style="font-size:16px; font-weight:900; margin:0; color:#0f172a;">COT-1000</h2>
-                                    <p style="font-size:10px; margin:2px 0 0; color:#64748b;">FECHA: <b id="p-date" style="color:#0f172a"></b></p>
-                                </div>
-                            </div>
-                            
-                            <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:20px; display:flex; justify-content:space-between;">
-                                <div style="width: 65%;">
-                                    <p style="font-size: 8px; color: #64748b; font-weight: 800; text-transform: uppercase; margin:0;">Cotización para:</p>
-                                    <b id="p-client" style="font-size: 14px; text-transform: uppercase; color: #0f172a;">---</b>
-                                    <p id="p-address-val" style="font-size: 10px; margin: 3px 0 0; color: #475569;"></p>
-                                </div>
-                                <div style="width: 30%; text-align: right; border-left: 1px solid #e2e8f0; padding-left: 10px;">
-                                    <p id="p-contact-val" style="font-size: 10px; color: #0f172a; font-weight: 600; white-space: pre-line;"></p>
-                                </div>
-                            </div>
-
-                            <table style="width:100%; border-collapse:collapse;">
-                                <thead>
-                                    <tr style="background:#0f172a; color:white; font-size:9px; text-transform:uppercase;">
-                                        <th style="padding:10px; width:40px;">Cant</th>
-                                        <th style="padding:10px; text-align:left;">Descripción</th>
-                                        <th style="padding:10px; width:100px; text-align:center;">Ref. Visual</th>
-                                        <th style="padding:10px; text-align:right; width:100px;">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="p-body"></tbody>
-                            </table>
-                        </div>
-
-                        <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 20px;">
-                            <div style="width: 300px; background: #f0f9ff; border: 1px solid #bae6fd; padding: 12px; border-radius: 8px;">
-                                <p style="font-size: 9px; font-weight: 800; color: #0369a1; text-transform: uppercase; margin: 0 0 5px 0;">Pago / Transferencia</p>
-                                <div style="font-size: 10px; color: #0c4a6e; line-height: 1.4;">
-                                    <b>Banco Estado</b> | Cuenta Vista<br>
-                                    <b>Cuenta:</b> 37370574546 | <b>RUT:</b> 76.823.326-8<br>
-                                    <b>LABORATORIO CREATIVO EUREKA SPA</b>
-                                </div>
-                            </div>
-                            <div style="width: 220px; text-align: right;">
-                                <div style="display:flex; justify-content:space-between; font-size: 11px;"><span>Neto:</span><b id="p-sub"></b></div>
-                                <div style="display:flex; justify-content:space-between; font-size: 11px; margin-bottom: 5px; border-bottom: 1px solid #ddd;"><span>IVA (19%):</span><b id="p-iva"></b></div>
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <span style="font-size:9px; font-weight:900; color:#3b82f6;">TOTAL</span>
-                                    <h2 id="p-total" style="font-size:24px; font-weight:900; color:#0f172a; margin:0;"></h2>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="border-top: 2px solid #0f172a; padding-top: 10px; font-size: 9px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <b style="color:#0f172a; font-size: 10px;">LABORATORIO CREATIVO EUREKA SPA</b><br>
-                                📍 Av. Manuel Rodríguez 723, Isla de Maipo<br>
-                                📧 contacto@eurekalaboratorio.cl
-                            </div>
-                            <div style="text-align: right;">
-                                🌐 www.eurekalaboratorio.cl<br>
-                                📞 +56 9 8827 7250
-                            </div>
-                        </div>
-                    </div>
-                </main>
-            </div>
-        </div>
-
-        <div id="panel-hist" class="hidden h-full overflow-y-auto p-4 space-y-3 bg-slate-900">
-            <input type="text" id="search-hist" placeholder="🔍 Buscar por nombre o folio..." class="input-dark" oninput="renderHistory()">
-            <div id="history-content"></div>
-        </div>
-
-        <div id="panel-clients" class="hidden h-full overflow-y-auto p-4 space-y-4 bg-slate-900">
-            <div class="bg-slate-800 p-4 rounded-xl space-y-2 border border-slate-700">
-                <b class="text-blue-400 text-xs">FICHA DE CLIENTE</b>
-                <input type="text" id="c-name" placeholder="Nombre Empresa" class="input-dark">
-                <div class="grid grid-cols-2 gap-2">
-                    <input type="text" id="c-phone" placeholder="WhatsApp" class="input-dark text-sm">
-                    <input type="text" id="c-mail" placeholder="Email" class="input-dark text-sm">
+                    <div id="items-list" class="space-y-2"></div>
+                    <button onclick="saveAndSend()" class="w-full bg-emerald-600 py-5 rounded-2xl font-black text-lg uppercase shadow-xl border-b-4 border-emerald-900">Guardar y Enviar PDF</button>
                 </div>
-                <input type="text" id="c-address" placeholder="Dirección" class="input-dark text-sm">
-                <button onclick="saveClient()" class="w-full bg-blue-600 py-3 rounded-lg font-black text-xs uppercase">Guardar</button>
+
+                <div class="preview-side lg:flex hidden" id="sub-pdf">
+                    <div class="zoom-controls" id="zoom-ctrl">
+                        <button onclick="changeZoom(0.1)" class="btn-zoom">＋</button>
+                        <button onclick="resetZoom()" class="btn-zoom" style="font-size: 14px;">1:1</button>
+                        <button onclick="changeZoom(-0.1)" class="btn-zoom">－</button>
+                    </div>
+
+                    <div id="pdf-wrap">
+                        <div id="pdf-canvas">
+                            <div style="flex: 1;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom: 20px; border-bottom: 4px solid #0f172a; padding-bottom: 10px;">
+                                    <img src="logo.png" style="height:70px;">
+                                    <div style="text-align:right;">
+                                        <h2 id="p-folio" style="font-size:16px; font-weight:900; margin:0; color:#0f172a;">COT-1000</h2>
+                                        <p style="font-size:10px; margin:2px 0 0; color:#64748b;">FECHA: <b id="p-date" style="color:#0f172a"></b></p>
+                                    </div>
+                                </div>
+                                <div style="background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:20px; display:flex; justify-content:space-between;">
+                                    <div style="width: 65%;">
+                                        <p style="font-size: 8px; color: #64748b; font-weight: 800; text-transform: uppercase; margin:0;">Cotización para:</p>
+                                        <b id="p-client" style="font-size: 14px; text-transform: uppercase; color: #0f172a;">---</b>
+                                        <p id="p-address-val" style="font-size: 10px; margin: 3px 0 0; color: #475569;"></p>
+                                    </div>
+                                    <div style="width: 30%; text-align: right; border-left: 1px solid #e2e8f0; padding-left: 10px;">
+                                        <p id="p-contact-val" style="font-size: 10px; color: #0f172a; font-weight: 600; white-space: pre-line;"></p>
+                                    </div>
+                                </div>
+                                <table style="width:100%; border-collapse:collapse;">
+                                    <thead><tr style="background:#0f172a; color:white; font-size:9px; text-transform:uppercase;"><th style="padding:10px; width:40px;">Cant</th><th style="padding:10px; text-align:left;">Descripción</th><th style="padding:10px; width:120px; text-align:center;">Ref. Visual</th><th style="padding:10px; text-align:right; width:100px;">Total</th></tr></thead>
+                                    <tbody id="p-body"></tbody>
+                                </table>
+                            </div>
+                            <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-end; padding-bottom: 20px;">
+                                <div style="width: 300px; background: #f0f9ff; border: 1px solid #bae6fd; padding: 12px; border-radius: 8px;">
+                                    <p style="font-size: 9px; font-weight: 800; color: #0369a1; text-transform: uppercase; margin: 0 0 5px 0;">Pago / Transferencia</p>
+                                    <div style="font-size: 10px; color: #0c4a6e; line-height: 1.4;">
+                                        <b>Banco Estado</b> | Cuenta Vista<br>
+                                        <b>Cuenta:</b> 37370574546 | <b>RUT:</b> 76.823.326-8<br>
+                                        <b>LABORATORIO CREATIVO EUREKA SPA</b>
+                                    </div>
+                                </div>
+                                <div style="width: 220px; text-align: right;">
+                                    <div style="display:flex; justify-content:space-between; font-size: 11px;"><span>Neto:</span><b id="p-sub"></b></div>
+                                    <div style="display:flex; justify-content:space-between; font-size: 11px; margin-bottom: 5px; border-bottom: 1px solid #ddd;"><span>IVA (19%):</span><b id="p-iva"></b></div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <span style="font-size:9px; font-weight:900; color:#3b82f6;">TOTAL</span>
+                                        <h2 id="p-total" style="font-size:24px; font-weight:900; color:#0f172a; margin:0;"></h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="border-top: 2px solid #0f172a; padding-top: 10px; font-size: 9px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
+                                <div><b style="color:#0f172a; font-size: 10px;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Av. Manuel Rodríguez 723, Isla de Maipo | 📧 contacto@eurekalaboratorio.cl</div>
+                                <div style="text-align: right;">🌐 www.eurekalaboratorio.cl | 📞 +56 9 8827 7250</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div id="clients-list" class="space-y-2 pb-20"></div>
         </div>
+
+        <div id="sec-hist" class="page-view hidden-page">
+            <div class="scroll-area space-y-3 bg-slate-900">
+                <input type="text" id="search-hist" placeholder="🔍 Buscar folio o cliente..." class="input-dark" oninput="renderHistory()">
+                <div id="history-content" class="space-y-3"></div>
+            </div>
+        </div>
+
+        <div id="sec-clients" class="page-view hidden-page">
+            <div class="scroll-area space-y-4 bg-slate-900">
+                <div class="bg-slate-800 p-4 rounded-xl space-y-3 border border-slate-700">
+                    <b class="text-blue-400 text-xs">FICHA DE CLIENTE</b>
+                    <input type="text" id="c-name" placeholder="Empresa" class="input-dark">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="c-phone" placeholder="WhatsApp" class="input-dark text-sm">
+                        <input type="text" id="c-mail" placeholder="Email" class="input-dark text-sm">
+                    </div>
+                    <input type="text" id="c-address" placeholder="Dirección" class="input-dark text-sm">
+                    <button onclick="saveClient()" class="w-full bg-blue-600 py-3 rounded-lg font-black text-xs uppercase">Guardar</button>
+                </div>
+                <div id="clients-list" class="space-y-2 pb-20"></div>
+            </div>
+        </div>
+
     </div>
 
     <div id="report-modal" class="hidden fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
@@ -218,62 +216,72 @@
 
     <script>
         let items = [], tempImg = null, editingId = null, editingItemIdx = null;
+        let currentZoom = (window.innerWidth < 1024) ? 0.42 : 1;
         document.getElementById('q-date-input').valueAsDate = new Date();
 
-        function setTab(t) {
+        function changeSection(sec) {
             ['edit', 'hist', 'clients'].forEach(s => {
-                document.getElementById('panel-'+s).classList.toggle('hidden', s !== t);
-                const btn = document.getElementById('tab-'+s);
-                btn.classList.toggle('text-blue-500', s === t); btn.classList.toggle('border-blue-500', s === t);
-                btn.classList.toggle('text-slate-500', s !== t); btn.classList.toggle('border-transparent', s !== t);
+                const el = document.getElementById('sec-'+s);
+                const btn = document.getElementById('m-'+s);
+                if(s === sec) {
+                    el.classList.remove('hidden-page'); el.classList.add('active-page');
+                    btn.classList.add('text-blue-500', 'border-blue-500'); btn.classList.remove('text-slate-500');
+                } else {
+                    el.classList.add('hidden-page'); el.classList.remove('active-page');
+                    btn.classList.remove('text-blue-500', 'border-blue-500'); btn.classList.add('text-slate-500');
+                }
             });
         }
 
-        function switchView(view) {
-            const wrapper = document.getElementById('swipe-wrapper');
-            const btnData = document.getElementById('btn-view-data');
-            const btnPreview = document.getElementById('btn-view-preview');
-            
-            if(view === 'preview') {
-                wrapper.classList.add('show-preview');
-                btnPreview.classList.add('sub-active');
-                btnData.classList.remove('sub-active');
-            } else {
-                wrapper.classList.remove('show-preview');
-                btnData.classList.add('sub-active');
-                btnPreview.classList.remove('sub-active');
-            }
+        function switchSubView(view) {
+            const isPdf = view === 'pdf';
+            document.getElementById('sub-data').classList.toggle('hidden', isPdf);
+            document.getElementById('sub-pdf').classList.toggle('hidden', !isPdf);
+            document.getElementById('sub-pdf').classList.toggle('flex', isPdf);
+            document.getElementById('p-pdf').classList.toggle('pill-active', isPdf);
+            document.getElementById('p-data').classList.toggle('pill-active', !isPdf);
+            document.getElementById('zoom-ctrl').classList.toggle('hidden', !isPdf);
+        }
+
+        // SISTEMA DE ZOOM
+        function changeZoom(delta) {
+            currentZoom = Math.min(Math.max(currentZoom + delta, 0.2), 2.5);
+            document.documentElement.style.setProperty('--zoom-level', currentZoom);
+        }
+        function resetZoom() {
+            currentZoom = (window.innerWidth < 1024) ? 0.42 : 1;
+            document.documentElement.style.setProperty('--zoom-level', currentZoom);
         }
 
         // --- CLIENTES ---
         function updateUI() {
             const sel = document.getElementById('q-client');
-            sel.innerHTML = '<option value="">-- SELECCIONAR CLIENTE --</option><option value="NEW" style="color:#3b82f6; font-weight:bold;">➕ AÑADIR NUEVO</option>';
+            sel.innerHTML = '<option value="">-- CLIENTE --</option><option value="NEW">➕ NUEVO</option>';
             window.clientes.forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
             document.getElementById('clients-list').innerHTML = window.clientes.map(c => `
-                <div class="bg-slate-800 p-3 rounded-xl flex justify-between items-center border border-slate-700 shadow-lg">
+                <div class="bg-slate-800 p-3 rounded-xl flex justify-between items-center border border-slate-700">
                     <b class="text-xs uppercase text-white">${c.name}</b>
                     <div class="flex gap-1">
-                        <button onclick="showReport('${c.name}')" class="bg-slate-700 text-white btn-ctrl">🔍</button>
-                        <button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="bg-red-900/30 text-red-400 btn-ctrl">✕</button>
+                        <button onclick="showReport('${c.name}')" class="bg-slate-700 text-white btn-icon text-sm">🔍</button>
+                        <button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="bg-red-900/30 text-red-400 btn-icon">✕</button>
                     </div>
                 </div>`).join('');
         }
 
-        function checkNewClient(el) { if(el.value === "NEW") { setTab('clients'); el.value=""; } else renderPreview(); }
+        function checkNewClient(el) { if(el.value === "NEW") { changeSection('clients'); el.value=""; } else renderPreview(); }
 
         async function saveClient() {
             const data = { name: document.getElementById('c-name').value.toUpperCase(), phone: document.getElementById('c-phone').value, mail: document.getElementById('c-mail').value, address: document.getElementById('c-address').value };
-            if(!data.name) return alert("Nombre Requerido");
+            if(!data.name) return;
             await fb.addDoc(fb.collection(fb.db, "erp_clientes"), data);
             ['c-name', 'c-phone', 'c-mail', 'c-address'].forEach(id => document.getElementById(id).value = '');
-            setTab('edit');
+            changeSection('edit');
         }
 
         function showReport(name) {
             const list = window.historial.filter(h => h.client === name);
             document.getElementById('m-client-name').innerText = name;
-            document.getElementById('m-list').innerHTML = list.map(h => `<div class="bg-slate-800 p-3 rounded-lg flex justify-between items-center text-[10px] border border-slate-700"><b>#${h.folio} - ${h.date}</b><button onclick='pdfFromHistory(${JSON.stringify(h)})' class="bg-blue-600 px-3 py-1 rounded font-bold">PDF</button></div>`).join('');
+            document.getElementById('m-list').innerHTML = list.map(h => `<div class="bg-slate-800 p-3 rounded-lg flex justify-between items-center border border-slate-700 text-[10px]"><b>#${h.folio} - ${h.date}</b><button onclick='pdfFromHistory(${JSON.stringify(h)})' class="bg-blue-600 px-3 py-1 rounded">PDF</button></div>`).join('');
             document.getElementById('report-modal').classList.remove('hidden');
         }
 
@@ -304,10 +312,10 @@
             document.getElementById('p-client').innerText = c.name || '---';
             document.getElementById('p-address-val').innerText = c.address || '';
             document.getElementById('p-contact-val').innerText = `${c.phone || ''}\n${c.mail || ''}`;
-            const f = editingId ? window.currentFolio : window.nextFolio;
+            const f = editingId ? window.currentFolio : (window.nextFolio || 1000);
             document.getElementById('p-folio').innerText = `COT-${f} | ${document.getElementById('q-desc').value.toUpperCase() || 'GENERAL'}`;
             
-            document.getElementById('p-body').innerHTML = items.map(it => `<tr style="border-bottom:1px solid #eee;"><td style="padding:10px; text-align:center; font-weight:700;">${it.qty}</td><td style="padding:10px; font-size:11px;">${it.name}</td><td style="padding:10px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height:25mm; border-radius:4px;">` : ''}</td><td style="padding:10px; text-align:right; font-weight:800;">$${it.total.toLocaleString('es-CL')}</td></tr>`).join('');
+            document.getElementById('p-body').innerHTML = items.map(it => `<tr style="border-bottom: 1px solid #eee;"><td style="padding: 10px; text-align:center; font-weight:700;">${it.qty}</td><td style="padding:10px; font-size:11px;">${it.name}</td><td style="padding:10px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height: 25mm; border-radius:4px;">` : ''}</td><td style="padding:10px; text-align:right; font-weight:800;">$${it.total.toLocaleString('es-CL')}</td></tr>`).join('');
             
             const n = items.reduce((s,i) => s + i.total, 0), v = Math.round(n * 0.19);
             document.getElementById('p-sub').innerText = `$${n.toLocaleString('es-CL')}`;
@@ -322,7 +330,7 @@
             document.getElementById('i-name').value = it.name; document.getElementById('i-price').value = it.price;
             document.getElementById('i-qty').value = it.qty; tempImg = it.img;
             document.getElementById('btn-item-action').innerText = "Guardar Cambios";
-            switchView('data');
+            switchSubView('data');
         }
 
         async function saveAndSend() {
@@ -374,9 +382,9 @@
                         <b class="text-blue-400 text-[10px]">#${h.folio}</b>
                     </div>
                     <div class="flex gap-2 mt-3">
-                        <button onclick='pdfFromHistory(${JSON.stringify(h)})' class="bg-slate-700 btn-ctrl flex-1 text-white text-sm">🔍</button>
-                        <button onclick="loadEdit('${h.id}')" class="bg-blue-600 btn-ctrl flex-1 text-white text-sm">✏️</button>
-                        <button onclick="if(confirm('¿Eliminar?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="bg-red-900/30 btn-ctrl flex-1 text-red-400 text-sm">✕</button>
+                        <button onclick='pdfFromHistory(${JSON.stringify(h)})' class="bg-slate-700 btn-icon flex-1 text-white text-sm">🔍</button>
+                        <button onclick="loadEdit('${h.id}')" class="bg-blue-600 btn-icon flex-1 text-white text-sm">✏️</button>
+                        <button onclick="if(confirm('¿Eliminar?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="bg-red-900/30 btn-icon flex-1 text-red-400 text-sm">✕</button>
                     </div>
                 </div>`).join('');
         }
@@ -387,7 +395,7 @@
             document.getElementById('q-client').value = h.client;
             document.getElementById('q-date-input').value = h.date;
             document.getElementById('q-desc').value = h.desc || "";
-            setTab('edit'); switchView('data'); renderPreview();
+            changeSection('edit'); switchSubView('data'); renderPreview();
         }
     </script>
 </body>
