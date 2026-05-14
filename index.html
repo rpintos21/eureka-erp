@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Eureka! ERP v75</title>
+    <title>Eureka! ERP v76</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -49,7 +49,7 @@
 
         @media (max-width: 1024px) {
             #pdf-inspection-zone { width: 100%; overflow-x: auto; background: #0f172a; padding: 20px 10px; border-radius: 20px; margin-top: 20px; }
-            #pdf-canvas { width: 210mm; min-height: 297mm; zoom: 0.38; margin: 0 auto; }
+            #pdf-canvas { width: 800px; min-height: 1130px; zoom: 0.38; margin: 0 auto; }
         }
 
         @media (min-width: 1025px) {
@@ -59,8 +59,8 @@
             #pdf-canvas { width: 210mm; min-height: 297mm; }
         }
 
-        #pdf-canvas { background: white; color: #1e293b; padding: 15mm; display: flex; flex-direction: column; box-shadow: 0 0 50px rgba(0,0,0,0.5); box-sizing: border-box; }
-        .icon-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1e293b; font-size: 18px; color: white; }
+        #pdf-canvas { background: white; color: #1e293b; padding: 15mm; display: flex; flex-direction: column; box-shadow: 0 0 50px rgba(0,0,0,0.5); box-sizing: border-box; position: relative; }
+        .icon-btn { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1e293b; font-size: 18px; color: white; }
     </style>
 </head>
 <body>
@@ -79,24 +79,24 @@
                 <input type="text" id="q-desc" placeholder="Proyecto..." class="input-dark" oninput="renderPreview()">
             </div>
             <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 shadow-2xl">
-                <textarea id="i-name" placeholder="Descripción producto..." class="input-dark h-24 text-sm resize-none"></textarea>
+                <textarea id="i-name" placeholder="Descripción..." class="input-dark h-24 text-sm resize-none"></textarea>
                 <div class="flex gap-3">
                     <input type="number" id="i-qty" value="1" class="input-dark text-center w-24">
                     <input type="number" id="i-price" placeholder="$ Precio" class="input-dark flex-1">
                     <button onclick="document.getElementById('f-img').click()" class="bg-slate-700 px-5 rounded-xl">📷</button>
                 </div>
                 <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
-                <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase shadow-lg shadow-blue-900/40">Agregar Ítem</button>
+                <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase shadow-lg shadow-blue-900/40">Agregar al listado</button>
             </div>
             <div id="items-list" class="space-y-2"></div>
-            <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-6 rounded-2xl font-black text-lg uppercase shadow-2xl mt-4 border-b-4 border-emerald-900">Guardar y Compartir PDF</button>
+            <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-6 rounded-2xl font-black text-lg uppercase shadow-2xl mt-4 border-b-4 border-emerald-900">Guardar y Enviar PDF</button>
         </div>
 
         <div id="pdf-inspection-zone" class="preview-side">
             <div id="pdf-canvas">
                 <div style="flex: 1;">
                     <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 4px solid #0f172a; padding-bottom: 15px;">
-                        <img src="logo.png" style="height:80px;">
+                        <img src="logo.png" style="height:70px;">
                         <div style="text-align:right;">
                             <h2 id="p-folio" style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-1000</h2>
                             <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b id="p-date" style="color:#0f172a"></b></p>
@@ -109,7 +109,6 @@
                             <p id="p-address-val" style="font-size: 11px; margin: 5px 0 0; color: #475569;"></p>
                         </div>
                         <div style="width: 30%; text-align: right; border-left: 2px solid #e2e8f0; padding-left: 15px;">
-                            <p style="font-size: 8px; color: #64748b; font-weight: 900; text-transform: uppercase; margin:0;">Contacto:</p>
                             <p id="p-contact-val" style="font-size: 11px; color: #0f172a; font-weight: 600; white-space: pre-line; margin-top: 5px;"></p>
                         </div>
                     </div>
@@ -129,8 +128,8 @@
                     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px;">
                         <div style="width: 330px; background: #f0f9ff; border: 1px solid #bae6fd; padding: 15px; border-radius: 12px;">
                             <b style="font-size: 9px; color: #0369a1; text-transform: uppercase;">PAGO / TRANSFERENCIA</b>
-                            <div style="font-size: 11px; color: #0c4a6e; line-height: 1.6; margin-top: 8px;">
-                                <b>Banco Estado</b> | Cuenta Vista<br><b>N° Cuenta:</b> 37370574546 | <b>RUT:</b> 76.823.326-8<br><b>LABORATORIO CREATIVO EUREKA SPA</b>
+                            <div style="font-size: 10px; color: #0c4a6e; line-height: 1.6; margin-top: 8px;">
+                                <b>Banco Estado</b> | Cuenta Vista<br><b>N°:</b> 37370574546 | <b>RUT:</b> 76.823.326-8<br><b>LABORATORIO CREATIVO EUREKA SPA</b>
                             </div>
                         </div>
                         <div style="width: 240px; text-align: right;">
@@ -140,8 +139,13 @@
                         </div>
                     </div>
                     <div style="border-top: 3px solid #0f172a; padding-top: 20px; font-size: 11px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
-                        <div><b style="color:#0f172a; font-size: 12px;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Av. Manuel Rodríguez 723, Isla de Maipo | 📧 contacto@eurekalaboratorio.cl</div>
-                        <div style="text-align: right;">🌐 www.eurekalaboratorio.cl | 📞 +56 9 8827 7250</div>
+                        <div>
+                            <b style="color:#0f172a; font-size: 12px;">LABORATORIO CREATIVO EUREKA SPA</b><br>
+                            📍 Av. Manuel Rodríguez 723, Isla de Maipo | 📧 contacto@eurekalaboratorio.cl
+                        </div>
+                        <div style="text-align: right;">
+                            🌐 www.eurekalaboratorio.cl | 📞 +56 9 8827 7250
+                        </div>
                     </div>
                 </div>
             </div>
@@ -149,16 +153,15 @@
     </div>
 
     <div id="sec-hist" class="tab-content">
-        <input type="text" id="search-hist" placeholder="🔍 Buscar por nombre o folio..." class="input-dark mb-6" oninput="renderHistory()">
+        <input type="text" id="search-hist" placeholder="🔍 Buscar..." class="input-dark mb-6" oninput="renderHistory()">
         <div id="history-content" class="space-y-4"></div>
     </div>
 
     <div id="sec-clients" class="tab-content">
         <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 mb-8">
-            <input type="text" id="c-name" placeholder="Empresa / Cliente" class="input-dark">
+            <input type="text" id="c-name" placeholder="Empresa" class="input-dark">
             <div class="grid grid-cols-2 gap-4">
-                <input type="text" id="c-phone" placeholder="WhatsApp" class="input-dark text-sm">
-                <input type="text" id="c-mail" placeholder="Email" class="input-dark text-sm">
+                <input type="text" id="c-phone" placeholder="WhatsApp" class="input-dark text-sm"><input type="text" id="c-mail" placeholder="Email" class="input-dark text-sm">
             </div>
             <input type="text" id="c-address" placeholder="Dirección" class="input-dark text-sm">
             <button onclick="saveClient()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase shadow-lg">Guardar Cliente</button>
@@ -181,42 +184,20 @@
             window.scrollTo(0,0);
         }
 
-        async function saveAndSend() {
-            const c = document.getElementById('q-client').value; if(!c || items.length === 0) return alert("Faltan datos");
-            let f = editingId ? window.currentFolio : window.nextFolio;
-            try {
-                if(!editingId) {
-                    await fb.runTransaction(fb.db, async (t) => {
-                        const snap = await t.get(fb.doc(fb.db, "config", "eureka_erp_v10"));
-                        f = snap.exists() ? snap.data().lastFolio : 1000;
-                        t.update(fb.doc(fb.db, "config", "eureka_erp_v10"), { lastFolio: f + 1 });
-                    });
-                }
-                const data = { folio: f, client: c, items, date: document.getElementById('q-date-input').value, neto: items.reduce((s,i)=>s+i.total,0), desc: document.getElementById('q-desc').value };
-                if(editingId) await fb.setDoc(fb.doc(fb.db, "erp_cotizaciones", editingId), data);
-                else await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), data);
-                
-                await generateAndSharePDF(f, c);
-                
-                items = []; editingId = null; renderPreview();
-            } catch (e) { alert("Error: " + e.message); }
-        }
-
-        async function generateAndSharePDF(folio, clientName) {
+        async function generateAndSharePDF(folio, clientName, mode='save') {
             const opt = { 
                 margin: 0, 
-                filename: `COT_${folio}_${clientName}.pdf`, 
+                filename: `COT_${folio}.pdf`, 
                 image: { type: 'jpeg', quality: 1.0 }, 
                 html2canvas: { scale: 3, useCORS: true, letterRendering: true }, 
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak: { mode: 'avoid-all' }
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
             const worker = html2pdf().from(document.getElementById('pdf-canvas')).set(opt);
-            const pdfBlob = await worker.output('blob');
-            const file = new File([pdfBlob], `COT_${folio}.pdf`, { type: 'application/pdf' });
-
-            if (navigator.share) {
-                await navigator.share({ files: [file], title: `Cotización #${folio}`, text: `Envío de cotización Eureka para ${clientName}` });
+            
+            if(mode === 'share' && navigator.share) {
+                const pdfBlob = await worker.output('blob');
+                const file = new File([pdfBlob], `COT_${folio}.pdf`, { type: 'application/pdf' });
+                await navigator.share({ files: [file], title: `COT #${folio}` });
             } else {
                 worker.save();
             }
@@ -229,38 +210,53 @@
                 <div class="bg-slate-800 p-5 rounded-2xl border-l-4 border-blue-500 shadow-xl flex justify-between items-center">
                     <div><b class="text-white uppercase text-sm">${h.client}</b><br><small class="text-blue-400 font-bold">#${h.folio}</small></div>
                     <div class="flex gap-2">
-                        <button onclick='shareFromHistory(${JSON.stringify(h)})' class="icon-btn">🔗</button>
+                        <button onclick='viewFromHistory(${JSON.stringify(h)})' class="icon-btn">🔍</button>
+                        <button onclick='shareFromHistory(${JSON.stringify(h)})' class="icon-btn text-emerald-400">🔗</button>
                         <button onclick="loadEdit('${h.id}')" class="icon-btn text-blue-400">✏️</button>
                         <button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="icon-btn text-red-400">🗑️</button>
                     </div>
                 </div>`).join('');
         }
 
-        async function shareFromHistory(h) {
+        async function viewFromHistory(h) {
             const backup = { it: [...items], c: document.getElementById('q-client').value, f: window.currentFolio, id: editingId };
             items = h.items; document.getElementById('q-client').value = h.client; window.currentFolio = h.folio; editingId = h.id;
             renderPreview();
-            setTimeout(async () => {
-                await generateAndSharePDF(h.folio, h.client);
-                items = backup.it; document.getElementById('q-client').value = backup.c; window.currentFolio = backup.f; editingId = backup.id;
-                renderPreview();
-            }, 500);
+            navTo('edit');
+            if(window.innerWidth < 1024) document.getElementById('pdf-inspection-zone').scrollIntoView({behavior:'smooth'});
         }
 
-        // --- FUNCIONES SOPORTE ---
+        async function shareFromHistory(h) {
+            items = h.items; document.getElementById('q-client').value = h.client; window.currentFolio = h.folio;
+            renderPreview();
+            setTimeout(() => generateAndSharePDF(h.folio, h.client, 'share'), 500);
+        }
+
+        async function saveAndSend() {
+            const c = document.getElementById('q-client').value; if(!c || items.length === 0) return alert("Faltan datos");
+            let f = editingId ? window.currentFolio : window.nextFolio;
+            if(!editingId) {
+                await fb.runTransaction(fb.db, async (t) => {
+                    const snap = await t.get(fb.doc(fb.db, "config", "eureka_erp_v10"));
+                    f = snap.exists() ? snap.data().lastFolio : 1000;
+                    t.update(fb.doc(fb.db, "config", "eureka_erp_v10"), { lastFolio: f + 1 });
+                });
+            }
+            const data = { folio: f, client: c, items, date: document.getElementById('q-date-input').value, neto: items.reduce((s,i)=>s+i.total,0), desc: document.getElementById('q-desc').value };
+            if(editingId) await fb.setDoc(fb.doc(fb.db, "erp_cotizaciones", editingId), data);
+            else await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), data);
+            
+            await generateAndSharePDF(f, c, 'share');
+            items = []; editingId = null; renderPreview();
+        }
+
         function updateUI() {
             const sel = document.getElementById('q-client');
-            sel.innerHTML = '<option value="">-- CLIENTE --</option><option value="NEW" style="color:#3b82f6; font-weight:bold;">➕ NUEVO</option>';
+            sel.innerHTML = '<option value="">-- SELECCIONAR --</option><option value="NEW">➕ NUEVO</option>';
             window.clientes.forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
-            document.getElementById('clients-list').innerHTML = window.clientes.map(c => `<div class="bg-slate-800 p-5 rounded-2xl flex justify-between items-center border border-slate-700"><b class="text-white uppercase text-sm">${c.name}</b><button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="icon-btn text-red-400">🗑️</button></div>`).join('');
+            document.getElementById('clients-list').innerHTML = window.clientes.map(c => `<div class="bg-slate-800 p-5 rounded-2xl flex justify-between border border-slate-700"><b>${c.name}</b><button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="icon-btn text-red-400">🗑️</button></div>`).join('');
         }
-        function addItem() {
-            const n = document.getElementById('i-name').value.toUpperCase(), p = Number(document.getElementById('i-price').value), q = Number(document.getElementById('i-qty').value);
-            if(!n || p <= 0) return alert("Datos incompletos");
-            items.push({ name: n, price: p, qty: q, total: p*q, img: tempImg });
-            document.getElementById('i-name').value = ""; document.getElementById('i-price').value = ""; tempImg = null;
-            renderPreview();
-        }
+        function addItem() { const n = document.getElementById('i-name').value.toUpperCase(), p = Number(document.getElementById('i-price').value), q = Number(document.getElementById('i-qty').value); if(!n || p <= 0) return; items.push({ name: n, price: p, qty: q, total: p*q, img: tempImg }); document.getElementById('i-name').value = ""; document.getElementById('i-price').value = ""; tempImg = null; renderPreview(); }
         function renderPreview() {
             const d = document.getElementById('q-date-input').value;
             document.getElementById('p-date').innerText = d ? new Date(d+'T12:00:00').toLocaleDateString('es-CL') : '--/--/----';
@@ -276,7 +272,7 @@
             document.getElementById('p-sub').innerText = `$${n.toLocaleString('es-CL')}`;
             document.getElementById('p-iva').innerText = `$${v.toLocaleString('es-CL')}`;
             document.getElementById('p-total').innerText = `$${(n + v).toLocaleString('es-CL')}`;
-            document.getElementById('items-list').innerHTML = items.map((it, i) => `<div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center"><span class="truncate w-2/3 text-white text-xs uppercase font-bold">${it.name}</span><button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2">✕</button></div>`).join('');
+            document.getElementById('items-list').innerHTML = items.map((it, i) => `<div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center"><span class="truncate w-2/3 text-white text-xs font-bold uppercase">${it.name}</span><button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2">✕</button></div>`).join('');
         }
         function loadEdit(id) { const h = window.historial.find(x => x.id === id); items = h.items; editingId = id; window.currentFolio = h.folio; document.getElementById('q-client').value = h.client; document.getElementById('q-date-input').value = h.date; document.getElementById('q-desc').value = h.desc || ""; navTo('edit'); renderPreview(); }
         function handleImg(i) { if(i.files[0]) { const r = new FileReader(); r.onload = e => { tempImg = e.target.result; renderPreview(); }; r.readAsDataURL(i.files[0]); } }
