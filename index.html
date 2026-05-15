@@ -816,7 +816,12 @@
                                 ctx.drawImage(logoEl, 0, 0);
 
                                 const logoData = logoCanvas.toDataURL('image/png');
-                                pdf.addImage(logoData, 'PNG', m, y, 38, 18);
+                                
+                                const ratio = logoCanvas.width / logoCanvas.height;
+                                const targetW = 38;
+                                const targetH = targetW / ratio;
+
+                                pdf.addImage(logoData, 'PNG', m, y, targetW, targetH);
                             }
                         } catch(e) {
                             console.warn('Logo PDF error', e);
