@@ -43,11 +43,11 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; background: #020617; color: #f1f5f9; margin: 0; overflow-x: hidden; }
-        .input-dark { background: #1e293b; border: 1px solid #334155; padding: 14px; border-radius: 12px; width: 100%; color: white; outline: none; font-size: 16px; }
-        .tab-content { display: none; width: 100%; padding: 20px; }
+        .input-dark { background: #1e293b; border: 1px solid #334155; padding: 14px; border-radius: 12px; width: 100%; color: white; outline: none; font-size: 16px; box-sizing: border-box; }
+        .tab-content { display: none; width: 100%; padding: 20px; box-sizing: border-box; }
         .tab-content.active { display: block; }
 
-        /* Estilo Hoja A4 */
+        /* Hoja A4 real */
         .pdf-page { 
             background: white !important; 
             color: #1e293b !important; 
@@ -60,26 +60,48 @@
             margin: 0 auto;
         }
 
-        /* Preliminar Adaptativo (Volvemos a lo que funcionaba) */
+        /* Preliminar del cotizador: estable, no congela formulario */
         #preliminar-container {
             width: 100%;
-            overflow: auto;
-            padding: 20px 0;
+            height: 70vh;
+            min-height: 520px;
+            overflow: hidden;
+            padding: 0;
             background: #020617;
+            position: relative;
             -webkit-overflow-scrolling: touch;
+            touch-action: none;
+            border-radius: 18px;
+        }
+
+        #pdf-preview-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: fit-content;
+            transform-origin: 0 0;
+            will-change: transform;
+        }
+
+        #pdf-canvas {
+            zoom: 1 !important;
+            transform: none !important;
+            margin: 0 !important;
         }
 
         @media (max-width: 1024px) {
-            #pdf-canvas {
-                zoom: 0.45;
-                margin: 0 auto;
+            #preliminar-container {
+                height: 68vh;
+                min-height: 460px;
             }
         }
 
-        /* Modal Lupa */
+        /* Modal lupa historial */
         #quick-view-modal {
             position: fixed;
             inset: 0;
+            width: 100vw;
+            height: 100vh;
             background: #020617;
             z-index: 99999;
             display: none;
@@ -98,31 +120,44 @@
 
         #qv-body {
             flex: 1;
-            overflow: auto;
-            padding: 20px;
+            overflow: hidden;
+            padding: 0;
             -webkit-overflow-scrolling: touch;
+            background: #020617;
+            position: relative;
+            touch-action: none;
         }
 
         #cloned-pdf-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: fit-content;
-            margin: 0 auto;
+            margin: 0;
+            transform-origin: 0 0;
+            will-change: transform;
         }
 
         #cloned-pdf-wrapper .pdf-page {
             zoom: 1 !important;
             transform: none !important;
+            margin: 0 !important;
             box-shadow: 0 0 30px rgba(0,0,0,0.5);
         }
 
-        @media (max-width: 1024px) {
-            #cloned-pdf-wrapper {
-                transform: scale(0.45);
-                transform-origin: top center;
-                margin-bottom: -160mm;
-            }
+        .icon-btn {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background: #1e293b;
+            font-size: 20px;
+            color: white;
+            border: none;
+            cursor: pointer;
         }
-
-        .icon-btn { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1e293b; font-size: 20px; color: white; }
     </style>
 </head>
 <body>
@@ -170,6 +205,7 @@
             </div>
 
             <div id="preliminar-container">
+                <div id="pdf-preview-wrapper">
                 <div id="pdf-canvas" class="pdf-page">
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 4px solid #0f172a; padding-bottom: 15px;">
@@ -213,6 +249,7 @@
                         </div>
                     </div>
                 </div>
+                </div>
             </div>
         </div>
     </div>
@@ -235,8 +272,10 @@
     <script>
         let items = [], tempImg = null, editingId = null;
         document.getElementById('q-date-input').valueAsDate = new Date();
+        window.addEventListener('load', () => initCotizadorZoom(true));
 
         function navTo(sec) {
+            closeQuickView();
             ['edit', 'hist', 'clients'].forEach(s => {
                 document.getElementById('sec-'+s).classList.toggle('active', s === sec);
                 const btn = document.getElementById('m-'+s);
@@ -246,13 +285,167 @@
             window.scrollTo(0,0);
         }
 
-        // --- LUPA: FIX HOJA EN BLANCO ---
-        function openQuickViewById(id) {
-            const h = (window.historial || []).find(x => x.id === id);
-            if(!h) return alert("No se encontró la cotización");
-            openQuickView(h);
+
+        // --- ZOOM INTERNO CON DOS DEDOS SOLO EN PRELIMINARES ---
+        const internalZoom = {};
+
+        function distTouches(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
         }
 
+        function centerTouches(touches) {
+            return {
+                x: (touches[0].clientX + touches[1].clientX) / 2,
+                y: (touches[0].clientY + touches[1].clientY) / 2
+            };
+        }
+
+        function applyInternalZoom(contentId) {
+            const content = document.getElementById(contentId);
+            const st = internalZoom[contentId];
+            if (!content || !st) return;
+            content.style.transform = `translate3d(${st.x}px, ${st.y}px, 0) scale(${st.scale})`;
+        }
+
+        function fitInternalZoom(containerId, contentId) {
+            const container = document.getElementById(containerId);
+            const content = document.getElementById(contentId);
+            if (!container || !content) return;
+
+            const page = content.querySelector('.pdf-page') || content;
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+            const pw = page.offsetWidth;
+            const ph = page.offsetHeight;
+
+            if (!cw || !ch || !pw || !ph) {
+                setTimeout(() => fitInternalZoom(containerId, contentId), 150);
+                return;
+            }
+
+            const pad = 16;
+            const fit = Math.min((cw - pad * 2) / pw, (ch - pad * 2) / ph);
+            const scale = Math.max(0.12, Math.min(1, fit));
+
+            internalZoom[contentId] = {
+                scale,
+                minScale: scale,
+                maxScale: 4,
+                x: (cw - pw * scale) / 2,
+                y: Math.max(8, (ch - ph * scale) / 2),
+                dragging: false,
+                startX: 0,
+                startY: 0,
+                startDist: 0,
+                startScale: scale,
+                pinchStartX: 0,
+                pinchStartY: 0,
+                pinchCenterX: 0,
+                pinchCenterY: 0
+            };
+
+            applyInternalZoom(contentId);
+        }
+
+        function setupInternalZoom(containerId, contentId) {
+            const container = document.getElementById(containerId);
+            if (!container || container.dataset.internalZoomReady === "1") return;
+
+            container.dataset.internalZoomReady = "1";
+
+            container.addEventListener('touchstart', function(e) {
+                const st = internalZoom[contentId];
+                if (!st) return;
+
+                if (e.touches.length === 1) {
+                    e.preventDefault();
+                    st.dragging = true;
+                    st.startX = e.touches[0].clientX - st.x;
+                    st.startY = e.touches[0].clientY - st.y;
+                }
+
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    st.dragging = false;
+                    st.startDist = distTouches(e.touches);
+                    st.startScale = st.scale;
+
+                    const c = centerTouches(e.touches);
+                    st.pinchCenterX = c.x;
+                    st.pinchCenterY = c.y;
+                    st.pinchStartX = st.x;
+                    st.pinchStartY = st.y;
+                }
+            }, { passive: false });
+
+            container.addEventListener('touchmove', function(e) {
+                const st = internalZoom[contentId];
+                if (!st) return;
+                e.preventDefault();
+
+                if (e.touches.length === 1 && st.dragging) {
+                    st.x = e.touches[0].clientX - st.startX;
+                    st.y = e.touches[0].clientY - st.startY;
+                    applyInternalZoom(contentId);
+                }
+
+                if (e.touches.length === 2 && st.startDist > 0) {
+                    const newDist = distTouches(e.touches);
+                    const rawScale = st.startScale * (newDist / st.startDist);
+                    const newScale = Math.min(st.maxScale, Math.max(st.minScale, rawScale));
+                    const ratio = newScale / st.startScale;
+
+                    const c = centerTouches(e.touches);
+                    st.scale = newScale;
+                    st.x = c.x - (st.pinchCenterX - st.pinchStartX) * ratio;
+                    st.y = c.y - (st.pinchCenterY - st.pinchStartY) * ratio;
+
+                    applyInternalZoom(contentId);
+                }
+            }, { passive: false });
+
+            container.addEventListener('touchend', function(e) {
+                const st = internalZoom[contentId];
+                if (!st) return;
+                if (e.touches.length === 0) {
+                    st.dragging = false;
+                    st.startDist = 0;
+                }
+            }, { passive: false });
+
+            container.addEventListener('dblclick', function(e) {
+                const st = internalZoom[contentId];
+                if (!st) return;
+                e.preventDefault();
+
+                if (st.scale <= st.minScale + 0.03) {
+                    st.scale = Math.min(2, st.maxScale);
+                    st.x = 20;
+                    st.y = 20;
+                    applyInternalZoom(contentId);
+                } else {
+                    fitInternalZoom(containerId, contentId);
+                }
+            });
+        }
+
+        function initCotizadorZoom(force = false) {
+            setupInternalZoom('preliminar-container', 'pdf-preview-wrapper');
+            if (force || !internalZoom['pdf-preview-wrapper']) {
+                setTimeout(() => fitInternalZoom('preliminar-container', 'pdf-preview-wrapper'), 120);
+            }
+        }
+
+        function initHistorialZoom() {
+            delete internalZoom['cloned-pdf-wrapper'];
+            setupInternalZoom('qv-body', 'cloned-pdf-wrapper');
+            setTimeout(() => fitInternalZoom('qv-body', 'cloned-pdf-wrapper'), 180);
+        }
+
+
+        // --- LUPA: FIX HOJA EN BLANCO ---
         async function openQuickView(h) {
             const modal = document.getElementById('quick-view-modal');
             const wrapper = document.getElementById('cloned-pdf-wrapper');
@@ -276,40 +469,42 @@
 
             renderPreview();
 
-            setTimeout(() => {
-                const clone = document.getElementById('pdf-canvas').cloneNode(true);
-                clone.removeAttribute("id");
-                clone.style.zoom = "1";
-                clone.style.transform = "none";
-                clone.style.margin = "0 auto";
-                clone.style.width = "210mm";
-                clone.style.minHeight = "297mm";
-                clone.style.background = "#ffffff";
+            await new Promise(resolve => setTimeout(resolve, 120));
 
-                wrapper.innerHTML = "";
-                wrapper.appendChild(clone);
+            const clone = document.getElementById('pdf-canvas').cloneNode(true);
+            clone.removeAttribute("id");
+            clone.style.zoom = "1";
+            clone.style.transform = "none";
+            clone.style.margin = "0 auto";
+            clone.style.width = "210mm";
+            clone.style.minHeight = "297mm";
+            clone.style.background = "#ffffff";
 
-                document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share');
-                document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save');
+            wrapper.appendChild(clone);
 
-                modal.style.display = "flex";
-                document.body.style.overflow = "hidden";
+            document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share');
+            document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save');
 
-                items = [...backup.it];
-                document.getElementById('q-client').value = backup.c;
-                window.currentFolio = backup.f;
-                editingId = backup.id;
-                document.getElementById('q-date-input').value = backup.d;
-                document.getElementById('q-desc').value = backup.ds;
-                renderPreview();
-            }, 120);
+            modal.style.display = "flex";
+            document.body.style.overflow = "hidden";
+            initHistorialZoom();
+
+            items = [...backup.it];
+            document.getElementById('q-client').value = backup.c;
+            window.currentFolio = backup.f;
+            editingId = backup.id;
+            document.getElementById('q-date-input').value = backup.d;
+            document.getElementById('q-desc').value = backup.ds;
+            renderPreview();
         }
 
         function closeQuickView() {
             const modal = document.getElementById('quick-view-modal');
             const wrapper = document.getElementById('cloned-pdf-wrapper');
-            if(modal) modal.style.display = "none";
-            if(wrapper) wrapper.innerHTML = "";
+            modal.style.display = "none";
+            wrapper.innerHTML = "";
+            wrapper.style.transform = "";
+            delete internalZoom["cloned-pdf-wrapper"];
             document.body.style.overflow = "";
         }
 
@@ -397,7 +592,7 @@
                 <div class="bg-slate-800 p-5 rounded-2xl border-l-4 border-blue-500 shadow-xl flex justify-between items-center">
                     <div class="truncate mr-4"><b class="text-white uppercase text-sm">${h.client}</b><br><small class="text-blue-400 font-bold">#${h.folio}</small></div>
                     <div class="flex gap-2">
-                        <button onclick="openQuickViewById('${h.id}')" class="icon-btn">🔍</button>
+                        <button onclick='openQuickView(${JSON.stringify(h)})' class="icon-btn">🔍</button>
                         <button onclick="loadEdit('${h.id}')" class="icon-btn text-blue-400">✏️</button>
                         <button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="icon-btn text-red-400">🗑️</button>
                     </div>
@@ -414,10 +609,7 @@
             const p = Number(document.getElementById('i-price').value);
             const q = Number(document.getElementById('i-qty').value);
 
-            if(!n || p <= 0 || q <= 0) {
-                alert("Completa descripción, cantidad y precio");
-                return;
-            }
+            if(!n || p <= 0 || q <= 0) return alert("Completa descripción, cantidad y precio");
 
             items.push({
                 name: n,
@@ -456,17 +648,13 @@
             document.getElementById('p-contact-val').innerText = c.phone || '';
             const f = editingId ? window.currentFolio : (window.nextFolio || 1000);
             document.getElementById('p-folio').innerText = `COT-${f} | ${document.getElementById('q-desc').value.toUpperCase() || 'GENERAL'}`;
-            document.getElementById('p-body').innerHTML = items.map(it => `<tr><td style="padding:15px 10px; text-align:center; font-weight:700; font-size:15px;">${it.qty}</td><td style="padding:15px 10px; font-size:13px; line-height:1.4;">${it.name}</td><td style="padding:15px 10px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height: 30mm; border-radius:6px;">` : ''}</td><td style="padding:15px 10px; text-align:right; font-weight:800; font-size:14px;">$${it.total.toLocaleString('es-CL')}</td></tr>`).join('');
+            document.getElementById('p-body').innerHTML = items.map(it => `<tr><td style="padding:15px 10px; text-align:center; font-weight:700; font-size:15px;">${it.qty}</td><td style="padding:15px 10px; font-size:13px; line-height:1.4;">${it.name}</td><td style="padding:15px 10px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height: 30mm; max-width: 35mm; object-fit: contain; border-radius:6px;">` : ''}</td><td style="padding:15px 10px; text-align:right; font-weight:800; font-size:14px;">$${it.total.toLocaleString('es-CL')}</td></tr>`).join('');
             const n = items.reduce((s,i) => s + i.total, 0), v = Math.round(n * 0.19);
             document.getElementById('p-sub').innerText = `$${n.toLocaleString('es-CL')}`;
             document.getElementById('p-iva').innerText = `$${v.toLocaleString('es-CL')}`;
             document.getElementById('p-total').innerText = `$${(n + v).toLocaleString('es-CL')}`;
-            document.getElementById('items-list').innerHTML = items.map((it, i) => `
-                <div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center gap-3">
-                    ${it.img ? `<img src="${it.img}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">` : ''}
-                    <span class="truncate flex-1 text-white text-xs font-bold uppercase">${it.name}</span>
-                    <button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2">✕</button>
-                </div>`).join('');
+            document.getElementById('items-list').innerHTML = items.map((it, i) => `<div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center gap-3">${it.img ? `<img src="${it.img}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">` : ''}<span class="truncate flex-1 text-white text-xs font-bold uppercase">${it.name}</span><button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2">✕</button></div>`).join('');
+            initCotizadorZoom(false);
         }
         function loadEdit(id) { const h = window.historial.find(x => x.id === id); items = h.items; editingId = id; window.currentFolio = h.folio; document.getElementById('q-client').value = h.client; document.getElementById('q-date-input').value = h.date; document.getElementById('q-desc').value = h.desc || ""; navTo('edit'); renderPreview(); }
         function handleImg(input) {
@@ -476,7 +664,7 @@
 
             if(!file) return;
 
-            if(!file.type.startsWith('image/')) {
+            if(!file.type || !file.type.startsWith('image/')) {
                 alert("El archivo seleccionado no es una imagen.");
                 input.value = "";
                 return;
@@ -494,7 +682,7 @@
 
                 image.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const maxSize = 700;
+                    const maxSize = 800;
 
                     let w = image.width;
                     let h = image.height;
@@ -513,7 +701,7 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(image, 0, 0, w, h);
 
-                    tempImg = canvas.toDataURL('image/jpeg', 0.78);
+                    tempImg = canvas.toDataURL('image/jpeg', 0.8);
 
                     if(status) {
                         status.innerHTML = `
@@ -545,6 +733,13 @@
         }
         async function saveClient() { const data = { name: document.getElementById('c-name').value.toUpperCase(), phone: document.getElementById('c-phone').value, address: document.getElementById('c-address').value }; if(data.name) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), data); ['c-name', 'c-phone', 'c-address'].forEach(id => document.getElementById(id).value = ''); navTo('edit'); }
         function checkNewClient(el) { if(el.value === "NEW") { navTo('clients'); el.value=""; } else renderPreview(); }
+            window.addEventListener('resize', () => {
+            setTimeout(() => initCotizadorZoom(true), 150);
+            const modal = document.getElementById('quick-view-modal');
+            if (modal && modal.style.display === "flex") {
+                setTimeout(initHistorialZoom, 150);
+            }
+        });
     </script>
 </body>
 </html>
