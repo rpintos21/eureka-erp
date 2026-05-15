@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Eureka! ERP v126 - Iconos IMG PDF corregidos</title>
+    <title>Eureka! ERP v126 - Iconos Corregidos</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -12,17 +12,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import {
-            getFirestore,
-            doc,
-            onSnapshot,
-            updateDoc,
-            increment,
-            collection,
-            addDoc,
-            deleteDoc,
-            setDoc,
-            getDoc,
-            runTransaction
+            getFirestore, doc, onSnapshot, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -37,18 +27,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        window.fb = {
-            db,
-            doc,
-            updateDoc,
-            increment,
-            collection,
-            addDoc,
-            deleteDoc,
-            setDoc,
-            getDoc,
-            runTransaction
-        };
+        window.fb = { db, doc, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction };
 
         window.addEventListener("DOMContentLoaded", () => {
             onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
@@ -57,455 +36,135 @@
             });
 
             onSnapshot(collection(db, "erp_clientes"), (s) => {
-                window.clientes = s.docs
-                    .map(d => ({ id: d.id, ...d.data() }))
-                    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
-
+                window.clientes = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
                 if (window.updateUI) window.updateUI();
                 if (window.renderPreview) window.renderPreview();
             });
 
             onSnapshot(collection(db, "erp_cotizaciones"), (s) => {
-                window.historial = s.docs
-                    .map(d => ({ id: d.id, ...d.data() }))
-                    .sort((a, b) => Number(b.folio || 0) - Number(a.folio || 0));
-
+                window.historial = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => Number(b.folio || 0) - Number(a.folio || 0));
                 if (window.renderHistory) window.renderHistory();
             });
         });
     </script>
 
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        body { font-family: 'Inter', sans-serif; background: #020617; color: #f1f5f9; margin: 0; }
+        .input-dark { background: #1e293b; border: 1px solid #334155; padding: 14px; border-radius: 12px; width: 100%; color: white; outline: none; font-size: 16px; }
+        .tab-content { display: none; width: 100%; padding: 20px; }
+        .tab-content.active { display: block; }
 
-        html,
-        body {
-            width: 100%;
-            max-width: 100%;
-            overflow-x: hidden;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #020617;
-            color: #f1f5f9;
-            margin: 0;
-        }
-
-        .input-dark {
-            background: #1e293b;
-            border: 1px solid #334155;
-            padding: 14px;
-            border-radius: 12px;
-            width: 100%;
-            color: white;
-            outline: none;
-            font-size: 16px;
-        }
-
-        .tab-content {
-            display: none;
-            width: 100%;
-            padding: 20px;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .edit-scroll {
-            width: 100%;
-            max-width: 100%;
-            overflow-x: auto;
-            overflow-y: visible;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 20px;
-        }
-
-        .edit-row {
-            display: flex;
-            flex-direction: row;
-            align-items: flex-start;
-            gap: 32px;
-            width: max-content;
-            min-width: 100%;
-        }
-
-        .left-panel {
-            width: 400px;
-            min-width: 400px;
-            flex-shrink: 0;
-        }
-
-        .preview-column {
-            width: calc(100vw - 20px);
-            min-width: calc(100vw - 20px);
-            max-width: calc(100vw - 20px);
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-
-        .viewer-container {
-            width: 100%;
-            max-width: 100%;
-            display: flex;
-            justify-content: flex-start;
-            overflow-x: auto;
-            overflow-y: auto;
-            background: #020617;
-            padding: 16px 0 60px 0;
-            min-height: 50vh;
-            -webkit-overflow-scrolling: touch;
-            touch-action: auto;
-            overscroll-behavior-x: contain;
-            border-radius: 12px;
-        }
-
-        .viewer-inner {
-            width: fit-content;
-            min-width: fit-content;
-            padding-right: 0;
-            flex-shrink: 0;
-        }
-
+        /* Estilos de la Hoja PDF */
         .pdf-page {
-            width: 794px;
-            min-width: 794px;
-            max-width: 794px;
-            min-height: 1123px;
-            height: auto;
-            max-height: none;
-            padding: 45px;
-            background: #ffffff !important;
-            color: #1e293b !important;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: visible;
-            margin: 0;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, .50);
+            width: 794px; min-height: 1123px; padding: 45px; background: #ffffff !important; color: #1e293b !important;
+            display: flex; flex-direction: column; position: relative; box-shadow: 0 10px 30px rgba(0, 0, 0, .5); margin: 0 auto;
         }
 
-        .quote-content {
-            display: flex;
-            flex-direction: column;
-            min-height: 1028px;
-            font-family: 'Inter', Arial, sans-serif;
+        .company-info { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+        .ci-line { display: flex; align-items: center; gap: 12px; font-size: 14px; color: #0f172a; }
+        
+        /* ICONOS CORREGIDOS PARA VISIBILIDAD */
+        .ci-icon { 
+            width: 22px !important; height: 22px !important; 
+            min-width: 22px !important; min-height: 22px !important;
+            object-fit: contain; flex-shrink: 0;
         }
 
-        .quote-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 18px;
-            margin-bottom: 22px;
-            border-bottom: 4px solid #0f172a;
-            padding-bottom: 16px;
-            flex-shrink: 0;
-        }
+        .items-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .items-table th { background: #0f172a; color: white; padding: 10px; font-size: 10px; text-transform: uppercase; }
+        .items-table td { border-bottom: 1px solid #e2e8f0; padding: 12px 10px; font-size: 11px; }
 
-        .company-info {
-            margin-top: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            color: #0f172a;
-            font-size: 15px;
-            line-height: 1.32;
-            max-width: 520px;
-        }
-
-        .ci-line {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        /* AJUSTE CLAVE: Iconos más grandes y definidos para el PDF */
-        .ci-icon {
-            width: 22px !important;
-            height: 22px !important;
-            min-width: 22px !important;
-            min-height: 22px !important;
-            object-fit: contain;
-            display: inline-block;
-            flex-shrink: 0;
-        }
-
-        .ci-text {
-            white-space: normal;
-            overflow: visible;
-            text-overflow: unset;
-        }
-
-        .quote-logo {
-            height: 72px;
-            max-width: 250px;
-            object-fit: contain;
-            display: block;
-        }
-
-        .client-box {
-            background: #f8fafc;
-            padding: 18px 20px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 24px;
-            display: flex;
-            justify-content: space-between;
-            gap: 18px;
-            flex-shrink: 0;
-        }
-
-        .quote-note {
-            padding: 11px 13px;
-            border-left: 4px solid #0f172a;
-            background: #f8fafc;
-            color: #475569;
-            font-size: 10.3px;
-            line-height: 1.45;
-            page-break-inside: avoid;
-            break-inside: avoid;
-        }
-
-        .items-wrap {
-            min-height: 285px;
-            overflow: visible;
-        }
-
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-
-        .items-table th {
-            background: #0f172a;
-            color: white;
-            font-size: 9.5px;
-            text-transform: uppercase;
-            padding: 11px 8px;
-            line-height: 1.2;
-        }
-
-        .items-table td {
-            border-bottom: 1px solid #e5e7eb;
-            padding: 14px 8px;
-            vertical-align: top;
-            color: #1e293b;
-            font-size: 11.2px;
-            line-height: 1.34;
-            word-break: break-word;
-        }
-
-        .items-table tr {
-            page-break-inside: avoid;
-            break-inside: avoid;
-        }
-
-        .item-img {
-            max-width: 100%;
-            max-height: 20mm;
-            border-radius: 4px;
-            object-fit: contain;
-            display: inline-block;
-        }
-
-        .footer-box {
-            margin-top: auto;
-            flex-shrink: 0;
-            page-break-inside: avoid;
-            break-inside: avoid;
-        }
-
-        .pay-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 16px;
-            height: 16px;
-            min-width: 16px;
-            border-radius: 4px;
-            background: #bae6fd;
-            color: #075985;
-            font-size: 8px;
-            font-weight: 900;
-            margin-right: 5px;
-            vertical-align: -2px;
-            font-family: Arial, sans-serif;
-        }
-
-        .payment-box {
-            width: 390px;
-            background: #f0f9ff;
-            border: 1px solid #bae6fd;
-            padding: 14px 16px;
-            border-radius: 12px;
-            font-size: 10.5px;
-            color: #0c4a6e;
-            line-height: 1.45;
-            page-break-inside: avoid;
-            break-inside: avoid;
-        }
-
-        .transfer-section {
-            margin-top: 28px;
-            display: flex;
-            justify-content: flex-start;
-        }
-
-        .total-box {
-            width: 260px;
-            text-align: right;
-            color: #0f172a;
-            flex-shrink: 0;
-        }
-
-        .totals-section {
-            margin-top: 14px;
-            border-top: 2px solid #0f172a;
-            padding-top: 12px;
-            display: flex;
-            justify-content: flex-end;
-            page-break-inside: avoid;
-            break-inside: avoid;
-        }
-
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 14px;
-            font-size: 12px;
-        }
-
-        .final-total {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 14px;
-            margin-top: 4px;
-        }
-
-        .final-total h2 {
-            font-size: 28px;
-            font-weight: 900;
-            margin: 0;
-            color: #0f172a;
-            white-space: nowrap;
-        }
-
-        #quick-view-modal {
-            position: fixed;
-            inset: 0;
-            background: #020617;
-            z-index: 2000;
-            display: none;
-            flex-direction: column;
-        }
-
-        #qv-header {
-            background: #0f172a;
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #1e293b;
-            flex-shrink: 0;
-        }
-
-        #qv-body {
-            flex: 1;
-            width: 100%;
-            max-width: 100%;
-            overflow-x: auto;
-            overflow-y: auto;
-            padding: 16px 0 60px 0;
-            -webkit-overflow-scrolling: touch;
-            touch-action: auto;
-            overscroll-behavior-x: contain;
-        }
-
-        .icon-btn {
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 14px;
-            background: #1e293b;
-            font-size: 22px;
-            color: white;
-            border: 1px solid #334155;
-        }
-
+        .payment-box { background: #f0f9ff; border: 1px solid #bae6fd; padding: 15px; border-radius: 12px; font-size: 11px; color: #0c4a6e; width: 400px; }
+        
         @media screen and (max-width: 700px) {
-            .tab-content { padding: 10px; }
-            .left-panel { width: calc(100vw - 20px); min-width: calc(100vw - 20px); }
-            .preview-column { width: calc(100vw - 20px); min-width: calc(100vw - 20px); max-width: calc(100vw - 20px); }
-            .viewer-container { width: calc(100vw - 20px); max-width: calc(100vw - 20px); min-height: auto; overflow-x: auto !important; overflow-y: auto; touch-action: auto; padding: 12px 0 40px 0; }
-            .viewer-inner, #quick-view-modal .viewer-inner { width: calc(100vw - 34px); min-width: calc(100vw - 34px); max-width: calc(100vw - 34px); height: auto; min-height: auto; padding-right: 0; flex-shrink: 0; }
-            .pdf-page, #quick-view-modal .pdf-page { transform: none !important; width: calc(100vw - 34px); min-width: calc(100vw - 34px); max-width: calc(100vw - 34px); height: auto; min-height: calc((100vw - 34px) * 1.414); max-height: none; aspect-ratio: auto; padding: 28px 22px; margin: 0; overflow: visible; }
-            
-            /* Ajuste iconos en vista móvil previa */
-            .pdf-page .ci-icon {
-                width: 18px !important;
-                height: 18px !important;
-                min-width: 18px !important;
-            }
-
-            .totals-section { margin-top: 12px; padding-top: 10px; justify-content: flex-end; }
-            .transfer-section { margin-top: 18px; }
-            .footer-box { margin-top: auto; }
-            .company-info { gap: 5px; font-size: 6.4px; max-width: 230px; line-height: 1.22; margin-top: 6px; }
-            .ci-line { gap: 5px; }
-            .ci-text { white-space: normal; overflow: visible; text-overflow: unset; }
-            .quote-note { margin-top: 10px; padding: 7px 8px; font-size: 7px; line-height: 1.35; }
-            .quote-header { gap: 10px; margin-bottom: 14px; padding-bottom: 10px; }
-            .quote-logo { height: 44px; max-width: 155px; }
-            .client-box { padding: 10px; margin-bottom: 14px; gap: 8px; }
-            .quote-content { min-height: calc((100vw - 34px) * 1.25); }
-            .items-wrap { min-height: 120px; }
-            .items-table th { font-size: 7.7px; padding: 7px 5px; }
-            .items-table td { font-size: 9px; padding: 7px 5px; }
-            .item-img { max-height: 14mm; }
-            .footer-box { margin-top: 22px; padding-top: 10px; }
-            .pay-icon { width: 10px; height: 10px; min-width: 10px; font-size: 5px; border-radius: 2px; margin-right: 3px; vertical-align: -1px; }
-            .payment-box { width: 72%; min-width: 0; max-width: 72%; padding: 8px; font-size: 6.6px; line-height: 1.25; overflow-wrap: anywhere; }
-            .total-box { width: 42%; min-width: 0; max-width: 42%; text-align: right; overflow: visible; }
-            .total-row { font-size: 8.2px; gap: 4px; }
-            .final-total { gap: 4px; justify-content: space-between; width: 100%; }
-            .final-total span { font-size: 9px !important; }
-            .final-total h2 { font-size: 15px; max-width: 100%; overflow: visible; white-space: nowrap; }
-            #qv-body { width: 100vw; max-width: 100vw; overflow-x: auto !important; overflow-y: auto; touch-action: auto; padding: 12px 0 40px 0; }
+            .pdf-page { width: 95vw; min-width: 95vw; padding: 20px; min-height: auto; transform: scale(1); }
+            .left-panel { width: 100%; }
         }
 
-        /* REGLAS CRÍTICAS PARA EL MOTOR DE PDF */
-        .pdf-export-page .ci-icon {
-            width: 24px !important;
-            height: 24px !important;
-            min-width: 24px !important;
-            min-height: 24px !important;
-            display: inline-block !important;
-            vertical-align: middle !important;
-            margin-right: 10px !important;
-        }
-
-        .pdf-export-page .ci-line {
-            display: flex !important;
-            align-items: center !important;
-            margin-bottom: 8px !important;
-        }
-
-        .pdf-export-page .company-info {
-            font-size: 15px !important;
-            gap: 2px !important; /* Controlado por el margin del ci-line */
-        }
+        /* Forzado para exportación */
+        .pdf-export-page .ci-icon { width: 24px !important; height: 24px !important; margin-right: 8px !important; }
     </style>
 </head>
-
 <body>
-    <nav class="flex bg-slate-950 border-b border-slate-800 sticky top-0 z-[100] h-[60px]">
-        <button onclick="navTo('edit')" id="m-edit" class="flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-blue-500 border-b-2 border-blue-500">Cotizador</button>
-        <button onclick="navTo('hist')" id="m-hist" class="flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-slate-500 border-b-2 border-
+    <nav class="flex bg-slate-950 border-b border-slate-800 sticky top-0 z-[100]">
+        <button onclick="navTo('edit')" id="m-edit" class="flex-1 p-4 font-black text-[11px] uppercase text-blue-500 border-b-2 border-blue-500">Cotizador</button>
+        <button onclick="navTo('hist')" id="m-hist" class="flex-1 p-4 font-black text-[11px] uppercase text-slate-500">Historial</button>
+    </nav>
+
+    <div id="sec-edit" class="tab-content active">
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="left-panel space-y-4 w-full md:w-[400px]">
+                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 space-y-3">
+                    <input type="date" id="q-date-input" class="input-dark">
+                    <select id="q-client" class="input-dark" onchange="renderPreview()"></select>
+                    <input type="text" id="q-desc" placeholder="Nombre del proyecto..." class="input-dark" oninput="renderPreview()">
+                </div>
+                <div class="bg-slate-800 p-5 rounded-2xl space-y-4">
+                    <textarea id="i-name" placeholder="Descripción..." class="input-dark h-20"></textarea>
+                    <div class="flex gap-2">
+                        <input type="number" id="i-qty" value="1" class="input-dark w-20">
+                        <input type="number" id="i-price" placeholder="Precio" class="input-dark flex-1">
+                    </div>
+                    <button onclick="addItem()" class="w-full bg-blue-600 py-3 rounded-xl font-bold">Agregar</button>
+                </div>
+                <div id="items-list" class="space-y-2"></div>
+                <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-5 rounded-2xl font-black text-lg">GUARDAR Y ENVIAR</button>
+            </div>
+
+            <div class="preview-panel overflow-x-auto">
+                <div id="pdf-canvas" class="pdf-page"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sec-hist" class="tab-content">
+        <div id="history-content" class="space-y-4 max-w-2xl mx-auto"></div>
+    </div>
+
+    <script>
+        let items = [];
+        const dateInput = document.getElementById("q-date-input");
+        dateInput.valueAsDate = new Date();
+
+        function navTo(sec) {
+            document.getElementById("sec-edit").classList.toggle("active", sec === 'edit');
+            document.getElementById("sec-hist").classList.toggle("active", sec === 'hist');
+        }
+
+        function getBaseHTML(folio, client, date, itemsArr, desc) {
+            const n = itemsArr.reduce((s, i) => s + Number(i.total || 0), 0);
+            const total = Math.round(n * 1.19);
+            
+            return `
+                <div class="quote-header flex justify-between border-b-4 border-slate-900 pb-4">
+                    <div>
+                        <div style="font-size:28px; font-weight:900;">EUREKA!</div>
+                        <div class="company-info">
+                            <div class="ci-line">
+                                <img class="ci-icon" src="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cpath%20fill%3D%27%23ef4444%27%20d%3D%27M32%203C20%203%2010%2013%2010%2025c0%2017%2022%2036%2022%2036s22-19%2022-36C54%2013%2044%203%2032%203z%27/%3E%3Ccircle%20fill%3D%27%23fff%27%20cx%3D%2732%27%20cy%3D%2725%27%20r%3D%278%27/%3E%3C/svg%3E">
+                                <span>Manuel Rodríguez 723, Isla de Maipo</span>
+                            </div>
+                            <div class="ci-line">
+                                <img class="ci-icon" src="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Cpath%20fill%3D%27%2325D366%27%20d%3D%27M16%20.4C7.4.4.5%207.3.5%2015.9c0%202.7.7%205.3%202%207.6L0%2032l8.7-2.3c2.2%201.2%204.7%201.8%207.3%201.8%208.6%200%2015.5-6.9%2015.5-15.5C31.5%207.3%2024.6.4%2016%20.4z%27/%3E%3Cpath%20fill%3D%27%23FFF%27%20d%3D%27M24.2%2019.5c-.4-.2-2.3-1.1-2.7-1.2-.4-.2-.6-.2-.9.2-.3.4-1%201.2-1.2%201.4-.2.2-.5.3-.9.1-.4-.2-1.8-.7-3.4-2.1-1.2-1.1-2.1-2.5-2.3-2.9-.2-.4%200-.6.2-.8.2-.2.4-.5.6-.7.2-.2.3-.4.5-.7.2-.2.1-.5%200-.7-.1-.2-.9-2.1-1.2-2.8-.3-.7-.6-.6-.9-.6h-.8c-.3%200-.7.1-1%20.5-.4.4-1.4%201.3-1.4%203.2%200%201.9%201.4%203.7%201.6%204%20.2.3%202.8%204.3%206.9%206%20.9.4%201.7.6%202.3.8%201%20.3%201.9.3%202.6.2.8-.1%202.3-.9%202.7-1.8.3-.9.3-1.6.2-1.8-.1-.1-.4-.2-.8-.4z%27/%3E%3C/svg%3E">
+                                <span>+56 9 8827 7250</span>
+                            </div>
+                            <div class="ci-line">
+                                <img class="ci-icon" src="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Crect%20width%3D%2764%27%20height%3D%2764%27%20rx%3D%2714%27%20fill%3D%27%23d62976%27/%3E%3Crect%20x%3D%2716%27%20y%3D%2716%27%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%279%27%20fill%3D%27none%27%20stroke%3D%27%23fff%27%20stroke-width%3D%274%27/%3E%3Ccircle%20cx%3D%2732%27%20cy%3D%2732%27%20r%3D%277%27%20fill%3D%27none%27%20stroke%3D%27%23fff%27%20stroke-width%3D%274%27/%3E%3C/svg%3E">
+                                <span>Eureka.laboratorio</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <h2 class="text-2xl font-black">COT-${folio}</h2>
+                        <p class="text-sm font-bold text-blue-600">${desc.toUpperCase()}</p>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <table class="items-table">
+                        <thead><tr><th>Cant</th><th>Descripción</th><th>Total</th></tr></thead>
+                        <tbody>${itemsArr.map(i => `<tr><td>${i.qty}</td><td>${i.name}</td><td class="text-right font-bold">$${Number(i.total).toLocaleString()}</td></tr>`).join('')}</tbody>
+                    </table>
+                </div>
+                <div class="mt-auto pt-10 flex justify-between items-end">
+                    <div class="payment-box">
+                        <b>DATOS TRANSFERENCIA</b><br>Banco
