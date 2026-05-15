@@ -194,9 +194,10 @@
                     <div class="flex gap-3">
                         <input type="number" id="i-qty" value="1" class="input-dark text-center w-20">
                         <input type="number" id="i-price" placeholder="$ Precio" class="input-dark flex-1">
-                        <button onclick="document.getElementById('f-img').click()" class="bg-slate-700 px-4 rounded-xl">📷</button>
+                        <label for="f-img" id="img-btn" class="bg-slate-700 px-4 rounded-xl flex items-center justify-center cursor-pointer min-w-[54px]">📷</label>
                     </div>
                     <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
+                    <div id="img-status" class="hidden bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-emerald-300 font-bold"></div>
                     <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase">Agregar Ítem</button>
                 </div>
                 <div id="items-list" class="space-y-2"></div>
@@ -516,50 +517,141 @@
             tempWrapper.style.left = '-10000px';
             tempWrapper.style.top = '0';
             tempWrapper.style.width = '210mm';
+            tempWrapper.style.height = 'auto';
             tempWrapper.style.background = '#ffffff';
             tempWrapper.style.zIndex = '-1';
+            tempWrapper.style.overflow = 'visible';
 
             const clone = original.cloneNode(true);
             clone.removeAttribute("id");
+
             clone.style.zoom = '1';
             clone.style.transform = 'none';
             clone.style.margin = '0';
             clone.style.width = '210mm';
-            clone.style.minHeight = '297mm';
+            clone.style.height = 'auto';
+            clone.style.minHeight = 'auto';
+            clone.style.maxHeight = 'none';
             clone.style.background = '#ffffff';
+            clone.style.display = 'block';
+            clone.style.overflow = 'visible';
+
+            const pdfStyle = document.createElement('style');
+            pdfStyle.innerHTML = `
+                .pdf-page {
+                    display: block !important;
+                    height: auto !important;
+                    min-height: auto !important;
+                    max-height: none !important;
+                    overflow: visible !important;
+                    box-sizing: border-box !important;
+                }
+
+                .pdf-page > div:first-child {
+                    display: block !important;
+                    flex: none !important;
+                    height: auto !important;
+                    min-height: auto !important;
+                    max-height: none !important;
+                    overflow: visible !important;
+                }
+
+                table {
+                    width: 100% !important;
+                    border-collapse: collapse !important;
+                    table-layout: fixed !important;
+                }
+
+                thead {
+                    display: table-header-group !important;
+                }
+
+                tbody {
+                    display: table-row-group !important;
+                }
+
+                tr {
+                    height: auto !important;
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                }
+
+                td, th {
+                    height: auto !important;
+                    vertical-align: middle !important;
+                    line-height: 1.35 !important;
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                }
+
+                #p-body tr td {
+                    padding-top: 8px !important;
+                    padding-bottom: 8px !important;
+                }
+
+                td img {
+                    display: block !important;
+                    max-height: 18mm !important;
+                    max-width: 30mm !important;
+                    width: auto !important;
+                    height: auto !important;
+                    object-fit: contain !important;
+                    margin: 0 auto !important;
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                }
+            `;
+            clone.prepend(pdfStyle);
 
             tempWrapper.appendChild(clone);
             document.body.appendChild(tempWrapper);
 
-            const opt = { 
-                margin: 0, 
-                filename: `COT_${folio}.pdf`, 
-                image: { type: 'jpeg', quality: 1 }, 
-                html2canvas: { 
-                    scale: 3, 
-                    useCORS: true,
-                    backgroundColor: '#ffffff',
-                    scrollX: 0,
-                    scrollY: 0,
-                    windowWidth: clone.scrollWidth,
-                    windowHeight: clone.scrollHeight
-                }, 
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
             try {
+                await new Promise(resolve => setTimeout(resolve, 250));
+
+                const opt = { 
+                    margin: 0,
+                    filename: `COT_${folio}.pdf`,
+                    image: {
+                        type: 'jpeg',
+                        quality: 0.98
+                    },
+                    html2canvas: {
+                        scale: 2,
+                        useCORS: true,
+                        backgroundColor: '#ffffff',
+                        scrollX: 0,
+                        scrollY: 0,
+                        windowWidth: clone.scrollWidth,
+                        windowHeight: clone.scrollHeight
+                    },
+                    jsPDF: {
+                        unit: 'mm',
+                        format: 'a4',
+                        orientation: 'portrait'
+                    },
+                    pagebreak: {
+                        mode: ['css', 'legacy'],
+                        avoid: ['tr', 'td', 'img']
+                    }
+                };
+
                 const worker = html2pdf().from(clone).set(opt);
 
                 if(mode === 'share' && navigator.share) {
                     const pdfBlob = await worker.output('blob');
                     const file = new File([pdfBlob], `COT_${folio}.pdf`, { type: 'application/pdf' });
-                    await navigator.share({ files: [file], title: `Cotización #${folio}` });
+                    await navigator.share({
+                        files: [file],
+                        title: `Cotización #${folio}`
+                    });
                 } else {
                     await worker.save();
                 }
+
             } catch(err) {
                 console.error(err);
-                alert("Error generando PDF");
+                alert("Error generando PDF. Intenta descargar nuevamente.");
             } finally {
                 document.body.removeChild(tempWrapper);
             }
@@ -623,10 +715,52 @@
             document.getElementById('i-qty').value = "1";
 
             tempImg = null;
+
             const fileInput = document.getElementById('f-img');
+            const status = document.getElementById('img-status');
+            const btn = document.getElementById('img-btn');
+
             if(fileInput) fileInput.value = "";
+            if(status) {
+                status.classList.add('hidden');
+                status.innerHTML = "";
+            }
+            if(btn) btn.innerText = "📷";
 
             renderPreview();
+        }
+        
+        function editItem(i) {
+            const it = items[i];
+            if(!it) return;
+
+            document.getElementById('i-name').value = it.name || "";
+            document.getElementById('i-price').value = it.price || "";
+            document.getElementById('i-qty').value = it.qty || 1;
+
+            tempImg = it.img || null;
+
+            const status = document.getElementById('img-status');
+            const btn = document.getElementById('img-btn');
+
+            if(tempImg && status) {
+                status.classList.remove('hidden');
+                status.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <img src="${tempImg}" style="width:42px;height:42px;object-fit:cover;border-radius:8px;">
+                        <span>Editando imagen del ítem.</span>
+                    </div>`;
+            }
+
+            if(btn && tempImg) btn.innerText = "✅";
+
+            items.splice(i,1);
+            renderPreview();
+
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
         }
 
         function renderPreview() {
@@ -639,25 +773,98 @@
             document.getElementById('p-contact-val').innerText = c.phone || '';
             const f = editingId ? window.currentFolio : (window.nextFolio || 1000);
             document.getElementById('p-folio').innerText = `COT-${f} | ${document.getElementById('q-desc').value.toUpperCase() || 'GENERAL'}`;
-            document.getElementById('p-body').innerHTML = items.map(it => `<tr><td style="padding:15px 10px; text-align:center; font-weight:700; font-size:15px;">${it.qty}</td><td style="padding:15px 10px; font-size:13px; line-height:1.4;">${it.name}</td><td style="padding:15px 10px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height: 30mm; border-radius:6px;">` : ''}</td><td style="padding:15px 10px; text-align:right; font-weight:800; font-size:14px;">$${it.total.toLocaleString('es-CL')}</td></tr>`).join('');
+            document.getElementById('p-body').innerHTML = items.map(it => `<tr><td style="padding:15px 10px; text-align:center; font-weight:700; font-size:15px;">${it.qty}</td><td style="padding:15px 10px; font-size:13px; line-height:1.4;">${it.name}</td><td style="padding:15px 10px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height: 30mm; max-width: 35mm; object-fit: contain; border-radius:6px;">` : ''}</td><td style="padding:15px 10px; text-align:right; font-weight:800; font-size:14px;">$${it.total.toLocaleString('es-CL')}</td></tr>`).join('');
             const n = items.reduce((s,i) => s + i.total, 0), v = Math.round(n * 0.19);
             document.getElementById('p-sub').innerText = `$${n.toLocaleString('es-CL')}`;
             document.getElementById('p-iva').innerText = `$${v.toLocaleString('es-CL')}`;
             document.getElementById('p-total').innerText = `$${(n + v).toLocaleString('es-CL')}`;
-            document.getElementById('items-list').innerHTML = items.map((it, i) => `<div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center"><span class="truncate w-2/3 text-white text-xs font-bold uppercase">${it.name}</span><button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2">✕</button></div>`).join('');
+            document.getElementById('items-list').innerHTML = items.map((it, i) => `
+                <div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center gap-3">
+                    ${it.img ? `<img src="${it.img}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">` : ''}
+                    <span class="truncate flex-1 text-white text-xs font-bold uppercase">${it.name}</span>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="editItem(${i})" class="text-blue-400 text-lg px-2">✏️</button>
+                        <button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2">✕</button>
+                    </div>
+                </div>`).join('');
             initCotizadorZoom(false);
         }
         function loadEdit(id) { const h = window.historial.find(x => x.id === id); items = h.items; editingId = id; window.currentFolio = h.folio; document.getElementById('q-client').value = h.client; document.getElementById('q-date-input').value = h.date; document.getElementById('q-desc').value = h.desc || ""; navTo('edit'); renderPreview(); }
-        function handleImg(i) {
-            if(i.files && i.files[0]) {
-                const r = new FileReader();
-                r.onload = e => {
-                    tempImg = e.target.result;
-                    alert("Imagen cargada. Ahora presiona Agregar Ítem.");
-                };
-                r.readAsDataURL(i.files[0]);
+        function handleImg(input) {
+            const file = input.files && input.files[0];
+            const status = document.getElementById('img-status');
+            const btn = document.getElementById('img-btn');
+
+            if(!file) return;
+
+            if(!file.type || !file.type.startsWith('image/')) {
+                alert("El archivo seleccionado no es una imagen.");
+                input.value = "";
+                return;
             }
-        }; r.readAsDataURL(i.files[0]); } }
+
+            if(status) {
+                status.classList.remove('hidden');
+                status.innerHTML = "Cargando imagen...";
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = e => {
+                const image = new Image();
+
+                image.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const maxSize = 420;
+
+                    let w = image.width;
+                    let h = image.height;
+
+                    if(w > h && w > maxSize) {
+                        h = Math.round(h * maxSize / w);
+                        w = maxSize;
+                    } else if(h > maxSize) {
+                        w = Math.round(w * maxSize / h);
+                        h = maxSize;
+                    }
+
+                    canvas.width = w;
+                    canvas.height = h;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(image, 0, 0, w, h);
+
+                    tempImg = canvas.toDataURL('image/jpeg', 0.62);
+
+                    if(status) {
+                        status.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <img src="${tempImg}" style="width:42px;height:42px;object-fit:cover;border-radius:8px;">
+                                <span>Imagen lista y optimizada. Ahora presiona “Agregar Ítem”.</span>
+                            </div>`;
+                    }
+
+                    if(btn) btn.innerText = "✅";
+                };
+
+                image.onerror = () => {
+                    tempImg = null;
+                    if(status) status.innerHTML = "No se pudo cargar la imagen.";
+                    if(btn) btn.innerText = "📷";
+                };
+
+                image.src = e.target.result;
+            };
+
+            reader.onerror = () => {
+                tempImg = null;
+                if(status) status.innerHTML = "No se pudo leer la imagen.";
+                if(btn) btn.innerText = "📷";
+            };
+
+            reader.readAsDataURL(file);
+        }
         async function saveClient() { const data = { name: document.getElementById('c-name').value.toUpperCase(), phone: document.getElementById('c-phone').value, address: document.getElementById('c-address').value }; if(data.name) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), data); ['c-name', 'c-phone', 'c-address'].forEach(id => document.getElementById(id).value = ''); navTo('edit'); }
         function checkNewClient(el) { if(el.value === "NEW") { navTo('clients'); el.value=""; } else renderPreview(); }
             window.addEventListener('resize', () => {
