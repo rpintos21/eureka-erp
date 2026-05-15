@@ -258,7 +258,7 @@
                 <div id="pdf-canvas" class="pdf-page">
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 4px solid #0f172a; padding-bottom: 15px;">
-                            <img src="./logo.png" style="height:70px; width:auto; object-fit:contain; display:block;" onerror="this.style.display='none'">
+                            <img src="logo.png" style="height:70px; width:auto; object-fit:contain; display:block;">
                             <div style="text-align:right;">
                                 <h2 id="p-folio" style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-1000</h2>
                                 <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b id="p-date" style="color:#0f172a"></b></p>
@@ -293,8 +293,8 @@
                             </div>
                         </div>
                         <div style="border-top: 3px solid #0f172a; padding-top: 20px; font-size: 11px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
-                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br><span style="font-family:sans-serif;">📍</span> Manuel Rodríguez 723, Isla de Maipo<br><span style="font-family:sans-serif;">📧</span> contacto@eurekalaboratorio.cl</div>
-                            <div style="text-align:right; line-height:1.7;"><span style="display:inline-block;width:18px;text-align:center;">🌐</span> www.eurekalaboratorio.cl<br><span style="display:inline-block;width:18px;text-align:center;">📞</span> +56 9 8827 7250</div>
+                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Manuel Rodríguez 723, Isla de Maipo<br>📧 contacto@eurekalaboratorio.cl</div>
+                            <div style="text-align: right;">🌐 www.eurekalaboratorio.cl<br>📞 +56 9 8827 7250</div>
                         </div>
                     </div>
                 </div>
@@ -639,6 +639,56 @@
             setTimeout(() => tzFit('qv-body', 'cloned-pdf-wrapper'), 120);
         }
 
+
+        function loadLogoForPDF() {
+            return new Promise(resolve => {
+                const existing = document.querySelector('img[src="logo.png"], img[src="./logo.png"]');
+
+                if(existing && existing.complete && existing.naturalWidth > 0) {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = existing.naturalWidth;
+                        canvas.height = existing.naturalHeight;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(existing, 0, 0);
+
+                        resolve({
+                            data: canvas.toDataURL('image/png'),
+                            width: canvas.width,
+                            height: canvas.height
+                        });
+                        return;
+                    } catch(e) {}
+                }
+
+                const img = new Image();
+
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.naturalWidth || img.width;
+                        canvas.height = img.naturalHeight || img.height;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+
+                        resolve({
+                            data: canvas.toDataURL('image/png'),
+                            width: canvas.width,
+                            height: canvas.height
+                        });
+                    } catch(e) {
+                        resolve(null);
+                    }
+                };
+
+                img.onerror = () => resolve(null);
+                img.src = "logo.png";
+            });
+        }
+
+
         function escapeHtmlSafe(value) {
             return String(value ?? "")
                 .replace(/&/g, "&amp;")
@@ -672,7 +722,7 @@
                 <div class="pdf-page" style="background:white !important; color:#1e293b !important; width:210mm; min-height:297mm; padding:15mm; display:flex; flex-direction:column; box-sizing:border-box; margin:0 auto;">
                     <div style="flex:1;">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:25px; border-bottom:4px solid #0f172a; padding-bottom:15px;">
-                            <img src="./logo.png" style="height:70px; width:auto; object-fit:contain; display:block;" onerror="this.style.display='none'">
+                            <img src="logo.png" style="height:70px; width:auto; object-fit:contain; display:block;">
                             <div style="text-align:right;">
                                 <h2 style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-${escapeHtmlSafe(h.folio || '')} | ${escapeHtmlSafe((h.desc || 'GENERAL').toUpperCase())}</h2>
                                 <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b style="color:#0f172a">${dateText}</b></p>
@@ -716,7 +766,8 @@
                             </div>
                         </div>
                         <div style="border-top:3px solid #0f172a; padding-top:20px; font-size:11px; color:#475569; display:flex; justify-content:space-between; align-items:center;">
-                            <div style="line-height:1.7;"><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br><span style="display:inline-block;width:18px;text-align:center;">📍</span> Manuel Rodríguez 723, Isla de Maipo<br><span style="display:inline-block;width:18px;text-align:center;">📧</span> contacto@eurekalaboratorio.cl</div><div style="text-align:right; line-height:1.7;"><span style="display:inline-block;width:18px;text-align:center;">🌐</span> www.eurekalaboratorio.cl<br><span style="display:inline-block;width:18px;text-align:center;">📞</span> +56 9 8827 7250</div>
+                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Manuel Rodríguez 723, Isla de Maipo<br>📧 contacto@eurekalaboratorio.cl</div>
+                            <div style="text-align:right;">🌐 www.eurekalaboratorio.cl<br>📞 +56 9 8827 7250</div>
                         </div>
                     </div>
                 </div>`;
@@ -788,6 +839,8 @@
                 const iva = Math.round(neto * 0.19);
                 const total = neto + iva;
 
+                const logoPDF = await loadLogoForPDF();
+
                 let y = 15;
 
                 function addPageIfNeeded(needed) {
@@ -802,28 +855,10 @@
                     pdf.setTextColor(15, 23, 42);
 
                     if(!compact) {
-
-                        try {
-                            const logoEl = document.querySelector('img[src="./logo.png"], img[src="logo.png"]');
-
-                            if(logoEl && logoEl.complete) {
-                                const logoCanvas = document.createElement('canvas');
-                                logoCanvas.width = logoEl.naturalWidth || 300;
-                                logoCanvas.height = logoEl.naturalHeight || 120;
-
-                                const ctx = logoCanvas.getContext('2d');
-                                ctx.drawImage(logoEl, 0, 0);
-
-                                const logoData = logoCanvas.toDataURL('image/png');
-                                
-                                const ratio = logoCanvas.width / logoCanvas.height;
-                                const targetW = 52;
-                                const targetH = targetW / ratio;
-
-                                pdf.addImage(logoData, 'PNG', m, y, targetW, targetH);
-                            }
-                        } catch(e) {
-                            console.warn('Logo PDF error', e);
+                        if(logoPDF && logoPDF.data) {
+                            const logoW = 62;
+                            const logoH = logoW / (logoPDF.width / logoPDF.height);
+                            pdf.addImage(logoPDF.data, 'PNG', m, y, logoW, logoH);
                         }
 
                         pdf.setFontSize(16);
@@ -943,17 +978,35 @@
 
                     pdf.setFont(undefined, 'normal');
                     pdf.setTextColor(71, 85, 105);
+
+                    pdf.setDrawColor(59, 130, 246);
                     pdf.setFillColor(59, 130, 246);
-                    pdf.circle(m + 2, y + 3.5, 1.2, 'F');
-                    pdf.circle(m + 2, y + 8.5, 1.2, 'F');
-                    pdf.circle(pageW - m - 63, y + 3.5, 1.2, 'F');
-                    pdf.circle(pageW - m - 63, y + 8.5, 1.2, 'F');
+                    pdf.setLineWidth(0.35);
 
-                    pdf.setFont(undefined, 'normal');
+                    // Ícono ubicación
+                    pdf.circle(m + 1.8, y + 3.4, 1.15, 'S');
+                    pdf.circle(m + 1.8, y + 3.4, 0.32, 'F');
+                    pdf.line(m + 1.8, y + 4.55, m + 1.8, y + 5.35);
 
+                    // Ícono correo
+                    pdf.rect(m + 0.2, y + 7.4, 3.2, 2.2, 'S');
+                    pdf.line(m + 0.2, y + 7.4, m + 1.8, y + 8.7);
+                    pdf.line(m + 3.4, y + 7.4, m + 1.8, y + 8.7);
+
+                    // Ícono web
+                    const webIconX = pageW - m - 68;
+                    pdf.circle(webIconX + 1.8, y + 3.6, 1.5, 'S');
+                    pdf.line(webIconX + 0.35, y + 3.6, webIconX + 3.25, y + 3.6);
+                    pdf.line(webIconX + 1.8, y + 2.1, webIconX + 1.8, y + 5.1);
+
+                    // Ícono teléfono
+                    const telIconX = pageW - m - 68;
+                    pdf.roundedRect(telIconX + 0.6, y + 7.25, 2.5, 3.1, 0.5, 0.5, 'S');
+                    pdf.circle(telIconX + 1.85, y + 9.85, 0.18, 'F');
+
+                    pdf.setTextColor(71, 85, 105);
                     pdf.text("Manuel Rodríguez 723, Isla de Maipo", m + 6, y + 5);
                     pdf.text("contacto@eurekalaboratorio.cl", m + 6, y + 10);
-
                     pdf.text("www.eurekalaboratorio.cl", pageW - m, y + 5, { align: 'right' });
                     pdf.text("+56 9 8827 7250", pageW - m, y + 10, { align: 'right' });
                 }
@@ -994,27 +1047,7 @@
 
                         if(hasImage) {
                             try {
-                                const imgProps = pdf.getImageProperties(it.img);
-                                const boxW = 27;
-                                const boxH = 18;
-                                const imgRatio = imgProps.width / imgProps.height;
-                                const boxRatio = boxW / boxH;
-
-                                let drawW = boxW;
-                                let drawH = boxH;
-
-                                if(imgRatio > boxRatio) {
-                                    drawW = boxW;
-                                    drawH = boxW / imgRatio;
-                                } else {
-                                    drawH = boxH;
-                                    drawW = boxH * imgRatio;
-                                }
-
-                                const imgX = m + 121 + (boxW - drawW) / 2;
-                                const imgY = y + 3 + (boxH - drawH) / 2;
-
-                                pdf.addImage(it.img, 'JPEG', imgX, imgY, drawW, drawH);
+                                pdf.addImage(it.img, 'JPEG', m + 121, y + 3, 27, 18);
                             } catch(e) {}
                         }
 
