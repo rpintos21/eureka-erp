@@ -986,7 +986,27 @@
 
                         if(hasImage) {
                             try {
-                                pdf.addImage(it.img, 'JPEG', m + 121, y + 3, 27, 18);
+                                const imgProps = pdf.getImageProperties(it.img);
+                                const boxW = 27;
+                                const boxH = 18;
+                                const imgRatio = imgProps.width / imgProps.height;
+                                const boxRatio = boxW / boxH;
+
+                                let drawW = boxW;
+                                let drawH = boxH;
+
+                                if(imgRatio > boxRatio) {
+                                    drawW = boxW;
+                                    drawH = boxW / imgRatio;
+                                } else {
+                                    drawH = boxH;
+                                    drawW = boxH * imgRatio;
+                                }
+
+                                const imgX = m + 121 + (boxW - drawW) / 2;
+                                const imgY = y + 3 + (boxH - drawH) / 2;
+
+                                pdf.addImage(it.img, 'JPEG', imgX, imgY, drawW, drawH);
                             } catch(e) {}
                         }
 
