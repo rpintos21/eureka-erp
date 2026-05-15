@@ -100,31 +100,39 @@
 
         #preliminar-container {
             width: 100%;
+            height: 72vh;
+            min-height: 520px;
             overflow: hidden;
             padding: 0;
             background: #020617;
             position: relative;
-            min-height: 75vh;
-            touch-action: none;
             border-radius: 18px;
+            touch-action: none;
+            overscroll-behavior: contain;
         }
 
         #pdf-preview-scale {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: fit-content;
             margin: 0;
-            transform-origin: top left;
+            transform-origin: 0 0;
             will-change: transform;
         }
 
         #pdf-canvas {
             zoom: 1 !important;
             transform: none !important;
+            margin: 0 !important;
         }
 
         @media (max-width: 1024px) {
             #preliminar-container {
-                min-height: 68vh;
+                height: 68vh;
+                min-height: 460px;
             }
+        }
         }
 
         #quick-view-modal { position: fixed; inset: 0; background: #020617; z-index: 1000; display: none; flex-direction: column; }
@@ -137,16 +145,21 @@
             touch-action: none;
             position: relative;
             background: #020617;
+            overscroll-behavior: contain;
         }
         #cloned-pdf-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: fit-content;
             margin: 0;
-            transform-origin: top left;
+            transform-origin: 0 0;
             will-change: transform;
         }
         #cloned-pdf-wrapper .pdf-page {
             zoom: 1 !important;
             transform: none !important;
+            margin: 0 !important;
             box-shadow: 0 0 30px rgba(0,0,0,0.5);
         }
         .icon-btn { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1e293b; font-size: 20px; color: white; }
@@ -399,8 +412,7 @@
             document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save');
 
             modal.style.display = "flex";
-            initHistoryPreviewZoom();
-
+            initHistorialPreviewZoom();
             items = [...backup.it];
             document.getElementById('q-client').value = backup.c;
             window.currentFolio = backup.f;
@@ -755,11 +767,11 @@
         window.checkNewClient = checkNewClient;
         window.deleteQuote = deleteQuote;
         window.deleteClient = deleteClient;
-                    window.addEventListener('resize', () => {
-            setTimeout(() => resetZoomToFit('preliminar-container', 'pdf-preview-scale'), 80);
+                            window.addEventListener('resize', () => {
+            setTimeout(() => initCotizadorPreviewZoom(true), 150);
             const modal = document.getElementById('quick-view-modal');
             if (modal && modal.style.display === "flex") {
-                setTimeout(() => resetZoomToFit('qv-body', 'cloned-pdf-wrapper'), 80);
+                setTimeout(initHistorialPreviewZoom, 150);
             }
         });
     </script>
