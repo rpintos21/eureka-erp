@@ -258,7 +258,7 @@
                 <div id="pdf-canvas" class="pdf-page">
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 4px solid #0f172a; padding-bottom: 15px;">
-                            <img src="logo.png" style="height:70px;">
+                            <img src="./logo.png" style="height:70px; width:auto; object-fit:contain; display:block;" onerror="this.style.display='none'">
                             <div style="text-align:right;">
                                 <h2 id="p-folio" style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-1000</h2>
                                 <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b id="p-date" style="color:#0f172a"></b></p>
@@ -293,8 +293,8 @@
                             </div>
                         </div>
                         <div style="border-top: 3px solid #0f172a; padding-top: 20px; font-size: 11px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
-                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Manuel Rodríguez 723, Isla de Maipo<br>📧 contacto@eurekalaboratorio.cl</div>
-                            <div style="text-align: right;">🌐 www.eurekalaboratorio.cl<br>📞 +56 9 8827 7250</div>
+                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br><span style="font-family:sans-serif;">📍</span> Manuel Rodríguez 723, Isla de Maipo<br><span style="font-family:sans-serif;">📧</span> contacto@eurekalaboratorio.cl</div>
+                            <div style="text-align: right;"><span style="font-family:sans-serif;">🌐</span> www.eurekalaboratorio.cl<br><span style="font-family:sans-serif;">📞</span> +56 9 8827 7250</div>
                         </div>
                     </div>
                 </div>
@@ -672,7 +672,7 @@
                 <div class="pdf-page" style="background:white !important; color:#1e293b !important; width:210mm; min-height:297mm; padding:15mm; display:flex; flex-direction:column; box-sizing:border-box; margin:0 auto;">
                     <div style="flex:1;">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:25px; border-bottom:4px solid #0f172a; padding-bottom:15px;">
-                            <img src="logo.png" style="height:70px;">
+                            <img src="./logo.png" style="height:70px; width:auto; object-fit:contain; display:block;" onerror="this.style.display='none'">
                             <div style="text-align:right;">
                                 <h2 style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-${escapeHtmlSafe(h.folio || '')} | ${escapeHtmlSafe((h.desc || 'GENERAL').toUpperCase())}</h2>
                                 <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b style="color:#0f172a">${dateText}</b></p>
@@ -716,8 +716,8 @@
                             </div>
                         </div>
                         <div style="border-top:3px solid #0f172a; padding-top:20px; font-size:11px; color:#475569; display:flex; justify-content:space-between; align-items:center;">
-                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Manuel Rodríguez 723, Isla de Maipo<br>📧 contacto@eurekalaboratorio.cl</div>
-                            <div style="text-align:right;">🌐 www.eurekalaboratorio.cl<br>📞 +56 9 8827 7250</div>
+                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br><span style="font-family:sans-serif;">📍</span> Manuel Rodríguez 723, Isla de Maipo<br><span style="font-family:sans-serif;">📧</span> contacto@eurekalaboratorio.cl</div>
+                            <div style="text-align:right;"><span style="font-family:sans-serif;">🌐</span> www.eurekalaboratorio.cl<br><span style="font-family:sans-serif;">📞</span> +56 9 8827 7250</div>
                         </div>
                     </div>
                 </div>`;
