@@ -529,6 +529,38 @@
             clone.style.minHeight = '297mm';
             clone.style.background = '#ffffff';
 
+            const pdfStyle = document.createElement('style');
+            pdfStyle.innerHTML = `
+                table, thead, tbody, tr, td, th {
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                }
+
+                tr {
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                }
+
+                td img {
+                    display: block !important;
+                    max-height: 24mm !important;
+                    max-width: 30mm !important;
+                    object-fit: contain !important;
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                }
+
+                #p-body tr td {
+                    padding-top: 8px !important;
+                    padding-bottom: 8px !important;
+                }
+
+                .pdf-page {
+                    overflow: visible !important;
+                }
+            `;
+            clone.prepend(pdfStyle);
+
             tempWrapper.appendChild(clone);
             document.body.appendChild(tempWrapper);
 
@@ -536,6 +568,7 @@
                 margin: 0, 
                 filename: `COT_${folio}.pdf`, 
                 image: { type: 'jpeg', quality: 1 }, 
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'], avoid: ['tr', 'td', 'img'] },
                 html2canvas: { 
                     scale: 3, 
                     useCORS: true,
@@ -725,7 +758,7 @@
 
                 image.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const maxSize = 800;
+                    const maxSize = 420;
 
                     let w = image.width;
                     let h = image.height;
@@ -744,13 +777,13 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(image, 0, 0, w, h);
 
-                    tempImg = canvas.toDataURL('image/jpeg', 0.8);
+                    tempImg = canvas.toDataURL('image/jpeg', 0.62);
 
                     if(status) {
                         status.innerHTML = `
                             <div class="flex items-center gap-3">
                                 <img src="${tempImg}" style="width:42px;height:42px;object-fit:cover;border-radius:8px;">
-                                <span>Imagen lista. Ahora presiona “Agregar Ítem”.</span>
+                                <span>Imagen lista y optimizada. Ahora presiona “Agregar Ítem”.</span>
                             </div>`;
                     }
 
