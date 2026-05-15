@@ -108,10 +108,16 @@
         }
 
         #quick-view-modal { position: fixed; inset: 0; background: #020617; z-index: 1000; display: none; flex-direction: column; }
-        #qv-header { background: #0f172a; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; }
-        #qv-body { flex: 1; overflow: auto; padding: 20px; -webkit-overflow-scrolling: touch; }
-        #cloned-pdf-wrapper { width: fit-content; margin: 0 auto; }
+        #qv-header { background: #0f172a; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; flex-shrink: 0; }
+        #qv-body { flex: 1; overflow: auto; padding: 20px; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y pinch-zoom; display: flex; justify-content: center; align-items: flex-start; }
+        #cloned-pdf-wrapper { width: fit-content; margin: 0 auto; transform-origin: top center; }
         #cloned-pdf-wrapper .pdf-page { zoom: 1 !important; transform: none !important; box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        @media (max-width: 1024px) {
+            #cloned-pdf-wrapper { transform: scale(0.45); transform-origin: top center; margin-bottom: -160mm; }
+        }
+        @media (min-width: 1025px) {
+            #cloned-pdf-wrapper { transform: scale(1); transform-origin: top center; }
+        }
         .icon-btn { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1e293b; font-size: 20px; color: white; }
     </style>
 </head>
@@ -322,23 +328,53 @@
         }
 
         async function openQuickView(h) {
-            const modal = $('quick-view-modal');
-            const wrapper = $('cloned-pdf-wrapper');
-            if (!modal || !wrapper) return;
+            const modal = document.getElementById('quick-view-modal');
+            const wrapper = document.getElementById('cloned-pdf-wrapper');
 
             wrapper.innerHTML = "";
-            const clone = $('pdf-canvas').cloneNode(true);
-            clone.removeAttribute('id');
+
+            const backup = {
+                it: [...items],
+                c: document.getElementById('q-client').value,
+                f: window.currentFolio,
+                id: editingId,
+                d: document.getElementById('q-date-input').value,
+                ds: document.getElementById('q-desc').value
+            };
+
+            items = [...(h.items || [])];
+            document.getElementById('q-client').value = h.client || "";
+            window.currentFolio = h.folio;
+            document.getElementById('q-date-input').value = h.date || "";
+            document.getElementById('q-desc').value = h.desc || "";
+
+            renderPreview();
+
+            await new Promise(resolve => setTimeout(resolve, 120));
+
+            const clone = document.getElementById('pdf-canvas').cloneNode(true);
             clone.style.zoom = "1";
             clone.style.transform = "none";
+            clone.style.margin = "0 auto";
+            clone.style.width = "210mm";
+            clone.style.minHeight = "297mm";
+            clone.style.background = "#ffffff";
 
             wrapper.appendChild(clone);
-            renderQuoteOnCanvas(clone, h);
 
-            $('qv-share-btn').onclick = () => generatePDFFromElement(clone, h.folio, 'share');
-            $('qv-download-btn').onclick = () => generatePDFFromElement(clone, h.folio, 'save');
+            document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share');
+            document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save');
 
             modal.style.display = "flex";
+
+            items = [...backup.it];
+            document.getElementById('q-client').value = backup.c;
+            window.currentFolio = backup.f;
+            editingId = backup.id;
+            document.getElementById('q-date-input').value = backup.d;
+            document.getElementById('q-desc').value = backup.ds;
+
+            renderPreview();
         }
 
         function closeQuickView() {
