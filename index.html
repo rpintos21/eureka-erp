@@ -532,22 +532,22 @@
             const pdfStyle = document.createElement('style');
             pdfStyle.innerHTML = `
                 table, thead, tbody, tr, td, th {
-                    page-break-inside: avoid !important;
-                    break-inside: avoid !important;
+                    page-break-inside: auto !important;
+                    break-inside: auto !important;
                 }
 
                 tr {
-                    page-break-inside: avoid !important;
-                    break-inside: avoid !important;
+                    page-break-inside: auto !important;
+                    break-inside: auto !important;
                 }
 
                 td img {
                     display: block !important;
-                    max-height: 24mm !important;
+                    max-height: 18mm !important;
                     max-width: 30mm !important;
                     object-fit: contain !important;
-                    page-break-inside: avoid !important;
-                    break-inside: avoid !important;
+                    page-break-inside: auto !important;
+                    break-inside: auto !important;
                 }
 
                 #p-body tr td {
@@ -568,7 +568,10 @@
                 margin: 0, 
                 filename: `COT_${folio}.pdf`, 
                 image: { type: 'jpeg', quality: 1 }, 
-                pagebreak: { mode: ['avoid-all', 'css', 'legacy'], avoid: ['tr', 'td', 'img'] },
+                pagebreak: { 
+                    mode: ['css', 'legacy'],
+                    avoid: ['img']
+                },
                 html2canvas: { 
                     scale: 3, 
                     useCORS: true,
