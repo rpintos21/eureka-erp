@@ -638,6 +638,40 @@
 
             renderPreview();
         }
+        
+        function editItem(i) {
+            const it = items[i];
+            if(!it) return;
+
+            document.getElementById('i-name').value = it.name || "";
+            document.getElementById('i-price').value = it.price || "";
+            document.getElementById('i-qty').value = it.qty || 1;
+
+            tempImg = it.img || null;
+
+            const status = document.getElementById('img-status');
+            const btn = document.getElementById('img-btn');
+
+            if(tempImg && status) {
+                status.classList.remove('hidden');
+                status.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <img src="${tempImg}" style="width:42px;height:42px;object-fit:cover;border-radius:8px;">
+                        <span>Editando imagen del ítem.</span>
+                    </div>`;
+            }
+
+            if(btn && tempImg) btn.innerText = "✅";
+
+            items.splice(i,1);
+            renderPreview();
+
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
         function renderPreview() {
             const d = document.getElementById('q-date-input').value;
             document.getElementById('p-date').innerText = d ? new Date(d+'T12:00:00').toLocaleDateString('es-CL') : '--/--/----';
@@ -653,7 +687,16 @@
             document.getElementById('p-sub').innerText = `$${n.toLocaleString('es-CL')}`;
             document.getElementById('p-iva').innerText = `$${v.toLocaleString('es-CL')}`;
             document.getElementById('p-total').innerText = `$${(n + v).toLocaleString('es-CL')}`;
-            document.getElementById('items-list').innerHTML = items.map((it, i) => `<div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center gap-3">${it.img ? `<img src="${it.img}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">` : ''}<span class="truncate flex-1 text-white text-xs font-bold uppercase">${it.name}</span><button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2">✕</button></div>`).join('');
+            document.getElementById('items-list').innerHTML = items.map((it, i) => `
+                <div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center gap-3">
+                    ${it.img ? `<img src="${it.img}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">` : ''}
+                    <span class="truncate flex-1 text-white text-xs font-bold uppercase">${it.name}</span>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="editItem(${i})" class="text-blue-400 text-lg px-2">✏️</button>
+                        <button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2">✕</button>
+                    </div>
+                </div>`).join('');
             initCotizadorZoom(false);
         }
         function loadEdit(id) { const h = window.historial.find(x => x.id === id); items = h.items; editingId = id; window.currentFolio = h.folio; document.getElementById('q-client').value = h.client; document.getElementById('q-date-input').value = h.date; document.getElementById('q-desc').value = h.desc || ""; navTo('edit'); renderPreview(); }
