@@ -245,8 +245,8 @@
                             </div>
                         </div>
                         <div style="border-top: 3px solid #0f172a; padding-top: 20px; font-size: 11px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
-                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Isla de Maipo | 📧 contacto@eurekalaboratorio.cl</div>
-                            <div style="text-align: right;">🌐 www.eurekalaboratorio.cl | 📞 +56 9 8827 7250</div>
+                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Manuel Rodríguez 723, Isla de Maipo<br>📧 contacto@eurekalaboratorio.cl</div>
+                            <div style="text-align: right;">🌐 www.eurekalaboratorio.cl<br>📞 +56 9 8827 7250</div>
                         </div>
                     </div>
                 </div>
@@ -525,8 +525,8 @@
                             </div>
                         </div>
                         <div style="border-top:3px solid #0f172a; padding-top:20px; font-size:11px; color:#475569; display:flex; justify-content:space-between; align-items:center;">
-                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Isla de Maipo | 📧 contacto@eurekalaboratorio.cl</div>
-                            <div style="text-align:right;">🌐 www.eurekalaboratorio.cl | 📞 +56 9 8827 7250</div>
+                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Manuel Rodríguez 723, Isla de Maipo<br>📧 contacto@eurekalaboratorio.cl</div>
+                            <div style="text-align:right;">🌐 www.eurekalaboratorio.cl<br>📞 +56 9 8827 7250</div>
                         </div>
                     </div>
                 </div>`;
@@ -728,8 +728,10 @@
 
                     pdf.setFont(undefined, 'normal');
                     pdf.setTextColor(71, 85, 105);
-                    pdf.text("Isla de Maipo | contacto@eurekalaboratorio.cl", m, y + 5);
-                    pdf.text("www.eurekalaboratorio.cl | +56 9 8827 7250", pageW - m, y + 5, { align: 'right' });
+                    pdf.text("Manuel Rodríguez 723, Isla de Maipo", m, y + 5);
+                    pdf.text("contacto@eurekalaboratorio.cl", m, y + 10);
+                    pdf.text("www.eurekalaboratorio.cl", pageW - m, y + 5, { align: 'right' });
+                    pdf.text("+56 9 8827 7250", pageW - m, y + 10, { align: 'right' });
                 }
 
                 function drawItemRow(it) {
