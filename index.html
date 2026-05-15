@@ -803,6 +803,25 @@
                     pdf.setTextColor(15, 23, 42);
 
                     if(!compact) {
+
+                        try {
+                            const logoEl = document.querySelector('img[src="./logo.png"], img[src="logo.png"]');
+
+                            if(logoEl && logoEl.complete) {
+                                const logoCanvas = document.createElement('canvas');
+                                logoCanvas.width = logoEl.naturalWidth || 300;
+                                logoCanvas.height = logoEl.naturalHeight || 120;
+
+                                const ctx = logoCanvas.getContext('2d');
+                                ctx.drawImage(logoEl, 0, 0);
+
+                                const logoData = logoCanvas.toDataURL('image/png');
+                                pdf.addImage(logoData, 'PNG', m, y, 38, 18);
+                            }
+                        } catch(e) {
+                            console.warn('Logo PDF error', e);
+                        }
+
                         pdf.setFontSize(16);
                         pdf.setFont(undefined, 'bold');
                         pdf.text(`COT-${q.folio || folio}`, pageW - m, y + 7, { align: 'right' });
