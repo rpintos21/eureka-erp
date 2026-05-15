@@ -817,7 +817,7 @@
                                 const logoData = logoCanvas.toDataURL('image/png');
                                 
                                 const ratio = logoCanvas.width / logoCanvas.height;
-                                const targetW = 38;
+                                const targetW = 52;
                                 const targetH = targetW / ratio;
 
                                 pdf.addImage(logoData, 'PNG', m, y, targetW, targetH);
@@ -943,15 +943,17 @@
 
                     pdf.setFont(undefined, 'normal');
                     pdf.setTextColor(71, 85, 105);
-                    pdf.setFont(undefined, 'bold');
-                    pdf.text("DIR:", m, y + 5);
-                    pdf.text("MAIL:", m, y + 10);
-                    pdf.text("WEB:", pageW - m - 48, y + 5);
-                    pdf.text("TEL:", pageW - m - 48, y + 10);
+                    pdf.setFillColor(59, 130, 246);
+                    pdf.circle(m + 2, y + 3.5, 1.2, 'F');
+                    pdf.circle(m + 2, y + 8.5, 1.2, 'F');
+                    pdf.circle(pageW - m - 63, y + 3.5, 1.2, 'F');
+                    pdf.circle(pageW - m - 63, y + 8.5, 1.2, 'F');
 
                     pdf.setFont(undefined, 'normal');
-                    pdf.text("Manuel Rodríguez 723, Isla de Maipo", m + 12, y + 5);
-                    pdf.text("contacto@eurekalaboratorio.cl", m + 16, y + 10);
+
+                    pdf.text("Manuel Rodríguez 723, Isla de Maipo", m + 6, y + 5);
+                    pdf.text("contacto@eurekalaboratorio.cl", m + 6, y + 10);
+
                     pdf.text("www.eurekalaboratorio.cl", pageW - m, y + 5, { align: 'right' });
                     pdf.text("+56 9 8827 7250", pageW - m, y + 10, { align: 'right' });
                 }
