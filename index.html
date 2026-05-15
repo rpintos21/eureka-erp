@@ -542,7 +542,7 @@
             };
 
             reader.readAsDataURL(file);
-        }; r.readAsDataURL(i.files[0]); } }
+        }
         async function saveClient() { const data = { name: document.getElementById('c-name').value.toUpperCase(), phone: document.getElementById('c-phone').value, address: document.getElementById('c-address').value }; if(data.name) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), data); ['c-name', 'c-phone', 'c-address'].forEach(id => document.getElementById(id).value = ''); navTo('edit'); }
         function checkNewClient(el) { if(el.value === "NEW") { navTo('clients'); el.value=""; } else renderPreview(); }
     </script>
