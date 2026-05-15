@@ -446,30 +446,45 @@
 
 
         // --- LUPA: FIX HOJA EN BLANCO ---
+        function openQuickViewById(id) {
+            const h = (window.historial || []).find(x => x.id === id);
+            if(!h) return alert("No se encontró la cotización seleccionada");
+            openQuickView(h);
+        }
+
         async function openQuickView(h) {
             const modal = document.getElementById('quick-view-modal');
             const wrapper = document.getElementById('cloned-pdf-wrapper');
+            const clientSelect = document.getElementById('q-client');
 
             wrapper.innerHTML = "";
 
             const backup = {
                 it: [...items],
-                c: document.getElementById('q-client').value,
+                c: clientSelect.value,
                 f: window.currentFolio,
                 id: editingId,
                 d: document.getElementById('q-date-input').value,
                 ds: document.getElementById('q-desc').value
             };
 
+            if(h.client && !Array.from(clientSelect.options).some(o => o.value === h.client)) {
+                const opt = document.createElement('option');
+                opt.value = h.client;
+                opt.textContent = h.client;
+                clientSelect.appendChild(opt);
+            }
+
             items = [...(h.items || [])];
-            document.getElementById('q-client').value = h.client || "";
+            clientSelect.value = h.client || "";
             window.currentFolio = h.folio;
+            editingId = h.id || "__HISTORIAL_PREVIEW__";
             document.getElementById('q-date-input').value = h.date || "";
             document.getElementById('q-desc').value = h.desc || "";
 
             renderPreview();
 
-            await new Promise(resolve => setTimeout(resolve, 120));
+            await new Promise(resolve => setTimeout(resolve, 150));
 
             const clone = document.getElementById('pdf-canvas').cloneNode(true);
             clone.removeAttribute("id");
@@ -480,17 +495,17 @@
             clone.style.minHeight = "297mm";
             clone.style.background = "#ffffff";
 
+            wrapper.innerHTML = "";
             wrapper.appendChild(clone);
 
-            document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share');
-            document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save');
+            document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share', h);
+            document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save', h);
 
             modal.style.display = "flex";
             document.body.style.overflow = "hidden";
-            initHistorialZoom();
 
             items = [...backup.it];
-            document.getElementById('q-client').value = backup.c;
+            clientSelect.value = backup.c;
             window.currentFolio = backup.f;
             editingId = backup.id;
             document.getElementById('q-date-input').value = backup.d;
@@ -509,134 +524,253 @@
         }
 
         // --- GENERADOR PDF REFORZADO ---
-        async function generateAndSharePDF(folio, clientName, mode) {
-            const original = document.getElementById('pdf-canvas');
-
-            const tempWrapper = document.createElement('div');
-            tempWrapper.style.position = 'fixed';
-            tempWrapper.style.left = '-99999px';
-            tempWrapper.style.top = '0';
-            tempWrapper.style.width = '210mm';
-            tempWrapper.style.background = '#ffffff';
-            tempWrapper.style.zIndex = '-1';
-            tempWrapper.style.pointerEvents = 'none';
-
-            const clone = original.cloneNode(true);
-            clone.removeAttribute("id");
-
-            // IMPORTANTE:
-            // Estos estilos se aplican SOLO al clon temporal del PDF.
-            // No modifican el preliminar visible ni la lupa.
-            clone.style.zoom = '1';
-            clone.style.transform = 'none';
-            clone.style.margin = '0';
-            clone.style.width = '210mm';
-            clone.style.minHeight = 'auto';
-            clone.style.height = 'auto';
-            clone.style.background = '#ffffff';
-            clone.style.display = 'block';
-            clone.style.overflow = 'visible';
-
-            const pdfOnlyStyle = document.createElement('style');
-            pdfOnlyStyle.textContent = `
-                .pdf-page {
-                    display: block !important;
-                    height: auto !important;
-                    min-height: auto !important;
-                    overflow: visible !important;
-                }
-
-                .pdf-page > div:first-child {
-                    display: block !important;
-                    height: auto !important;
-                    min-height: auto !important;
-                    overflow: visible !important;
-                }
-
-                table {
-                    width: 100% !important;
-                    border-collapse: collapse !important;
-                    table-layout: fixed !important;
-                }
-
-                tr, td, th {
-                    height: auto !important;
-                    vertical-align: middle !important;
-                }
-
-                #p-body tr td {
-                    padding-top: 7px !important;
-                    padding-bottom: 7px !important;
-                    line-height: 1.3 !important;
-                }
-
-                td img {
-                    display: block !important;
-                    max-height: 17mm !important;
-                    max-width: 30mm !important;
-                    width: auto !important;
-                    height: auto !important;
-                    object-fit: contain !important;
-                    margin: 0 auto !important;
-                }
-            `;
-
-            clone.prepend(pdfOnlyStyle);
-            tempWrapper.appendChild(clone);
-            document.body.appendChild(tempWrapper);
-
+        async function generateAndSharePDF(folio, clientName, mode, quoteData = null) {
             try {
-                await new Promise(resolve => setTimeout(resolve, 200));
+                const JsPDFClass = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : window.jsPDF;
+                if(!JsPDFClass) {
+                    alert("Error generando PDF: no se encontró la librería jsPDF.");
+                    return;
+                }
 
-                const opt = {
-                    margin: 0,
-                    filename: `COT_${folio}.pdf`,
-                    image: {
-                        type: 'jpeg',
-                        quality: 0.98
-                    },
-                    html2canvas: {
-                        scale: 2,
-                        useCORS: true,
-                        backgroundColor: '#ffffff',
-                        scrollX: 0,
-                        scrollY: 0,
-                        windowWidth: clone.scrollWidth,
-                        windowHeight: clone.scrollHeight
-                    },
-                    jsPDF: {
-                        unit: 'mm',
-                        format: 'a4',
-                        orientation: 'portrait'
-                    },
-                    pagebreak: {
-                        mode: ['css', 'legacy'],
-                        before: [],
-                        after: [],
-                        avoid: ['img']
-                    }
+                const q = quoteData || {
+                    folio: folio,
+                    client: document.getElementById('q-client').value,
+                    items: [...items],
+                    date: document.getElementById('q-date-input').value,
+                    desc: document.getElementById('q-desc').value || ""
                 };
 
-                const worker = html2pdf().from(clone).set(opt);
+                const pdf = new JsPDFClass({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+
+                const pageW = 210;
+                const pageH = 297;
+                const m = 15;
+                const contentW = pageW - (m * 2);
+                const money = n => "$" + Number(n || 0).toLocaleString('es-CL');
+                const fmtDate = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('es-CL') : "--/--/----";
+
+                const clientObj = (window.clientes || []).find(c => c.name === q.client) || {};
+                const neto = (q.items || []).reduce((s, it) => s + Number(it.total || 0), 0);
+                const iva = Math.round(neto * 0.19);
+                const total = neto + iva;
+
+                let y = 15;
+
+                function addPageIfNeeded(needed) {
+                    if(y + needed > pageH - 18) {
+                        pdf.addPage();
+                        y = 15;
+                        drawHeader(true);
+                    }
+                }
+
+                function drawHeader(compact = false) {
+                    pdf.setTextColor(15, 23, 42);
+
+                    if(!compact) {
+                        try {
+                            const logo = document.querySelector('img[src="logo.png"]');
+                            if(logo && logo.complete) {
+                                pdf.addImage(logo, 'PNG', m, y, 38, 18);
+                            }
+                        } catch(e) {}
+
+                        pdf.setFontSize(16);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.text(`COT-${q.folio || folio}`, pageW - m, y + 7, { align: 'right' });
+
+                        pdf.setFontSize(8);
+                        pdf.setFont(undefined, 'normal');
+                        pdf.setTextColor(100, 116, 139);
+                        pdf.text(`FECHA: ${fmtDate(q.date)}`, pageW - m, y + 13, { align: 'right' });
+
+                        y += 24;
+
+                        pdf.setDrawColor(15, 23, 42);
+                        pdf.setLineWidth(1.2);
+                        pdf.line(m, y, pageW - m, y);
+                        y += 8;
+
+                        pdf.setFillColor(248, 250, 252);
+                        pdf.setDrawColor(226, 232, 240);
+                        pdf.roundedRect(m, y, contentW, 24, 3, 3, 'FD');
+
+                        pdf.setFontSize(7);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.setTextColor(100, 116, 139);
+                        pdf.text("CLIENTE:", m + 4, y + 7);
+
+                        pdf.setFontSize(11);
+                        pdf.setTextColor(15, 23, 42);
+                        pdf.text(String(q.client || "---").toUpperCase(), m + 4, y + 13, { maxWidth: 110 });
+
+                        pdf.setFontSize(8);
+                        pdf.setFont(undefined, 'normal');
+                        pdf.setTextColor(71, 85, 105);
+                        if(clientObj.address) pdf.text(String(clientObj.address), m + 4, y + 19, { maxWidth: 110 });
+
+                        pdf.setFontSize(7);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.setTextColor(100, 116, 139);
+                        pdf.text("CONTACTO:", pageW - m - 52, y + 7);
+
+                        pdf.setFontSize(8);
+                        pdf.setTextColor(15, 23, 42);
+                        if(clientObj.phone) pdf.text(String(clientObj.phone), pageW - m - 52, y + 13, { maxWidth: 48 });
+
+                        y += 32;
+                    } else {
+                        pdf.setFontSize(9);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.text(`COT-${q.folio || folio} / ${String(q.client || "---").toUpperCase()}`, m, y);
+                        y += 6;
+                    }
+
+                    drawTableHeader();
+                }
+
+                function drawTableHeader() {
+                    pdf.setFillColor(15, 23, 42);
+                    pdf.rect(m, y, contentW, 9, 'F');
+
+                    pdf.setFontSize(7);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.setTextColor(255, 255, 255);
+
+                    pdf.text("CANT", m + 4, y + 6);
+                    pdf.text("DESCRIPCIÓN", m + 22, y + 6);
+                    pdf.text("IMAGEN", m + 122, y + 6);
+                    pdf.text("TOTAL", pageW - m - 3, y + 6, { align: 'right' });
+
+                    y += 9;
+                }
+
+                function drawFooter() {
+                    addPageIfNeeded(55);
+
+                    y += 8;
+
+                    pdf.setFillColor(240, 249, 255);
+                    pdf.setDrawColor(186, 230, 253);
+                    pdf.roundedRect(m, y, 90, 28, 3, 3, 'FD');
+
+                    pdf.setFontSize(7);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.setTextColor(3, 105, 161);
+                    pdf.text("PAGO POR TRANSFERENCIA", m + 4, y + 6);
+
+                    pdf.setFontSize(8);
+                    pdf.setFont(undefined, 'normal');
+                    pdf.setTextColor(12, 74, 110);
+                    pdf.text("Banco Estado | Vista", m + 4, y + 12);
+                    pdf.text("N°: 37370574546 | RUT: 76.823.326-8", m + 4, y + 18);
+                    pdf.text("LABORATORIO CREATIVO EUREKA SPA", m + 4, y + 24);
+
+                    const tx = pageW - m - 60;
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(15, 23, 42);
+
+                    pdf.text("Neto:", tx, y + 7);
+                    pdf.text(money(neto), pageW - m, y + 7, { align: 'right' });
+
+                    pdf.text("IVA:", tx, y + 14);
+                    pdf.text(money(iva), pageW - m, y + 14, { align: 'right' });
+
+                    pdf.setFontSize(15);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.text("TOTAL", tx, y + 25);
+                    pdf.text(money(total), pageW - m, y + 25, { align: 'right' });
+
+                    y += 38;
+
+                    pdf.setDrawColor(15, 23, 42);
+                    pdf.setLineWidth(0.8);
+                    pdf.line(m, y, pageW - m, y);
+                    y += 7;
+
+                    pdf.setFontSize(7);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.setTextColor(15, 23, 42);
+                    pdf.text("LABORATORIO CREATIVO EUREKA SPA", m, y);
+
+                    pdf.setFont(undefined, 'normal');
+                    pdf.setTextColor(71, 85, 105);
+                    pdf.text("Isla de Maipo | contacto@eurekalaboratorio.cl", m, y + 5);
+                    pdf.text("www.eurekalaboratorio.cl | +56 9 8827 7250", pageW - m, y + 5, { align: 'right' });
+                }
+
+                function drawItemRow(it) {
+                    const desc = String(it.name || "");
+                    const lines = pdf.splitTextToSize(desc, 93);
+                    const lineH = 4.4;
+                    const maxLinesPerPart = 44;
+                    let index = 0;
+                    let part = 0;
+
+                    while(index < lines.length || part === 0) {
+                        const remaining = lines.length - index;
+                        const take = Math.max(1, Math.min(maxLinesPerPart, remaining || 1));
+                        const partLines = lines.slice(index, index + take);
+
+                        const hasImage = part === 0 && it.img;
+                        const rowH = Math.max(12, partLines.length * lineH + 7, hasImage ? 24 : 0);
+
+                        addPageIfNeeded(rowH + 2);
+
+                        pdf.setDrawColor(226, 232, 240);
+                        pdf.setLineWidth(0.2);
+                        pdf.rect(m, y, contentW, rowH);
+
+                        pdf.setFontSize(8);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.setTextColor(15, 23, 42);
+
+                        if(part === 0) {
+                            pdf.text(String(it.qty || ""), m + 7, y + 8, { align: 'center' });
+                        }
+
+                        pdf.setFontSize(8);
+                        pdf.setFont(undefined, 'normal');
+                        pdf.text(partLines, m + 22, y + 7, { maxWidth: 93 });
+
+                        if(hasImage) {
+                            try {
+                                pdf.addImage(it.img, 'JPEG', m + 121, y + 3, 27, 18);
+                            } catch(e) {}
+                        }
+
+                        if(part === 0) {
+                            pdf.setFont(undefined, 'bold');
+                            pdf.text(money(it.total), pageW - m - 3, y + 8, { align: 'right' });
+                        }
+
+                        y += rowH;
+                        index += take;
+                        part++;
+                    }
+                }
+
+                drawHeader(false);
+
+                (q.items || []).forEach(drawItemRow);
+
+                drawFooter();
 
                 if(mode === 'share' && navigator.share) {
-                    const pdfBlob = await worker.output('blob');
-                    const file = new File([pdfBlob], `COT_${folio}.pdf`, { type: 'application/pdf' });
-                    await navigator.share({
-                        files: [file],
-                        title: `Cotización #${folio}`
-                    });
+                    const pdfBlob = pdf.output('blob');
+                    const file = new File([pdfBlob], `COT_${q.folio || folio}.pdf`, { type: 'application/pdf' });
+                    await navigator.share({ files: [file], title: `Cotización #${q.folio || folio}` });
                 } else {
-                    await worker.save();
+                    pdf.save(`COT_${q.folio || folio}.pdf`);
                 }
 
             } catch(err) {
                 console.error(err);
-                alert("Error generando PDF. Intenta descargar nuevamente.");
-            } finally {
-                if(tempWrapper && tempWrapper.parentNode) {
-                    tempWrapper.parentNode.removeChild(tempWrapper);
-                }
+                alert("Error generando PDF: " + (err.message || err));
             }
         }
 
@@ -666,7 +800,7 @@
                 <div class="bg-slate-800 p-5 rounded-2xl border-l-4 border-blue-500 shadow-xl flex justify-between items-center">
                     <div class="truncate mr-4"><b class="text-white uppercase text-sm">${h.client}</b><br><small class="text-blue-400 font-bold">#${h.folio}</small></div>
                     <div class="flex gap-2">
-                        <button onclick='openQuickView(${JSON.stringify(h)})' class="icon-btn">🔍</button>
+                        <button onclick="openQuickViewById('${h.id}')" class="icon-btn">🔍</button>
                         <button onclick="loadEdit('${h.id}')" class="icon-btn text-blue-400">✏️</button>
                         <button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="icon-btn text-red-400">🗑️</button>
                     </div>
