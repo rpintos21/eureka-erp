@@ -514,45 +514,42 @@
 
             const tempWrapper = document.createElement('div');
             tempWrapper.style.position = 'fixed';
-            tempWrapper.style.left = '-10000px';
+            tempWrapper.style.left = '-99999px';
             tempWrapper.style.top = '0';
             tempWrapper.style.width = '210mm';
-            tempWrapper.style.height = 'auto';
             tempWrapper.style.background = '#ffffff';
             tempWrapper.style.zIndex = '-1';
-            tempWrapper.style.overflow = 'visible';
+            tempWrapper.style.pointerEvents = 'none';
 
             const clone = original.cloneNode(true);
             clone.removeAttribute("id");
 
+            // IMPORTANTE:
+            // Estos estilos se aplican SOLO al clon temporal del PDF.
+            // No modifican el preliminar visible ni la lupa.
             clone.style.zoom = '1';
             clone.style.transform = 'none';
             clone.style.margin = '0';
             clone.style.width = '210mm';
-            clone.style.height = 'auto';
             clone.style.minHeight = 'auto';
-            clone.style.maxHeight = 'none';
+            clone.style.height = 'auto';
             clone.style.background = '#ffffff';
             clone.style.display = 'block';
             clone.style.overflow = 'visible';
 
-            const pdfStyle = document.createElement('style');
-            pdfStyle.innerHTML = `
+            const pdfOnlyStyle = document.createElement('style');
+            pdfOnlyStyle.textContent = `
                 .pdf-page {
                     display: block !important;
                     height: auto !important;
                     min-height: auto !important;
-                    max-height: none !important;
                     overflow: visible !important;
-                    box-sizing: border-box !important;
                 }
 
                 .pdf-page > div:first-child {
                     display: block !important;
-                    flex: none !important;
                     height: auto !important;
                     min-height: auto !important;
-                    max-height: none !important;
                     overflow: visible !important;
                 }
 
@@ -562,54 +559,36 @@
                     table-layout: fixed !important;
                 }
 
-                thead {
-                    display: table-header-group !important;
-                }
-
-                tbody {
-                    display: table-row-group !important;
-                }
-
-                tr {
-                    height: auto !important;
-                    page-break-inside: avoid !important;
-                    break-inside: avoid !important;
-                }
-
-                td, th {
+                tr, td, th {
                     height: auto !important;
                     vertical-align: middle !important;
-                    line-height: 1.35 !important;
-                    page-break-inside: avoid !important;
-                    break-inside: avoid !important;
                 }
 
                 #p-body tr td {
-                    padding-top: 8px !important;
-                    padding-bottom: 8px !important;
+                    padding-top: 7px !important;
+                    padding-bottom: 7px !important;
+                    line-height: 1.3 !important;
                 }
 
                 td img {
                     display: block !important;
-                    max-height: 18mm !important;
+                    max-height: 17mm !important;
                     max-width: 30mm !important;
                     width: auto !important;
                     height: auto !important;
                     object-fit: contain !important;
                     margin: 0 auto !important;
-                    page-break-inside: avoid !important;
-                    break-inside: avoid !important;
                 }
             `;
-            clone.prepend(pdfStyle);
 
+            clone.prepend(pdfOnlyStyle);
             tempWrapper.appendChild(clone);
             document.body.appendChild(tempWrapper);
 
             try {
-                await new Promise(resolve => setTimeout(resolve, 250));
+                await new Promise(resolve => setTimeout(resolve, 200));
 
-                const opt = { 
+                const opt = {
                     margin: 0,
                     filename: `COT_${folio}.pdf`,
                     image: {
@@ -632,7 +611,9 @@
                     },
                     pagebreak: {
                         mode: ['css', 'legacy'],
-                        avoid: ['tr', 'td', 'img']
+                        before: [],
+                        after: [],
+                        avoid: ['img']
                     }
                 };
 
@@ -653,7 +634,9 @@
                 console.error(err);
                 alert("Error generando PDF. Intenta descargar nuevamente.");
             } finally {
-                document.body.removeChild(tempWrapper);
+                if(tempWrapper && tempWrapper.parentNode) {
+                    tempWrapper.parentNode.removeChild(tempWrapper);
+                }
             }
         }
 
