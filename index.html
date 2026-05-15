@@ -194,7 +194,7 @@
                     <div class="flex gap-3">
                         <input type="number" id="i-qty" value="1" class="input-dark text-center w-20">
                         <input type="number" id="i-price" placeholder="$ Precio" class="input-dark flex-1">
-                        <button onclick="document.getElementById('f-img').click()" class="bg-slate-700 px-4 rounded-xl">📷</button>
+                        <button type="button" onclick="document.getElementById('f-img').click()" class="bg-slate-700 px-4 rounded-xl">📷</button>
                     </div>
                     <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
                     <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase">Agregar Ítem</button>
@@ -481,8 +481,8 @@
 
             wrapper.appendChild(clone);
 
-            document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share');
-            document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save');
+            document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share', h);
+            document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save', h);
 
             modal.style.display = "flex";
             document.body.style.overflow = "hidden";
@@ -508,7 +508,25 @@
         }
 
         // --- GENERADOR PDF REFORZADO ---
-        async function generateAndSharePDF(folio, clientName, mode) {
+        async function generateAndSharePDF(folio, clientName, mode, quoteData = null) {
+            const originalItems = [...items];
+            const originalClient = document.getElementById('q-client').value;
+            const originalFolio = window.currentFolio;
+            const originalEditingId = editingId;
+            const originalDate = document.getElementById('q-date-input').value;
+            const originalDesc = document.getElementById('q-desc').value;
+
+            if(quoteData) {
+                items = [...(quoteData.items || [])];
+                document.getElementById('q-client').value = quoteData.client || "";
+                window.currentFolio = quoteData.folio || folio;
+                editingId = quoteData.id || "__PDF_TEMP__";
+                document.getElementById('q-date-input').value = quoteData.date || "";
+                document.getElementById('q-desc').value = quoteData.desc || "";
+                renderPreview();
+                await new Promise(resolve => setTimeout(resolve, 120));
+            }
+
             const original = document.getElementById('pdf-canvas');
 
             const tempWrapper = document.createElement('div');
@@ -562,24 +580,82 @@
                 alert("Error generando PDF");
             } finally {
                 document.body.removeChild(tempWrapper);
+
+                if(quoteData) {
+                    items = originalItems;
+                    document.getElementById('q-client').value = originalClient;
+                    window.currentFolio = originalFolio;
+                    editingId = originalEditingId;
+                    document.getElementById('q-date-input').value = originalDate;
+                    document.getElementById('q-desc').value = originalDesc;
+                    renderPreview();
+                }
             }
         }
 
         async function saveAndSend() {
-            const c = document.getElementById('q-client').value; if(!c || items.length === 0) return alert("Faltan datos");
-            let f = editingId ? window.currentFolio : window.nextFolio;
-            if(!editingId) {
-                await fb.runTransaction(fb.db, async (t) => {
-                    const snap = await t.get(fb.doc(fb.db, "config", "eureka_erp_v10"));
-                    f = snap.exists() ? snap.data().lastFolio : 1000;
-                    t.update(fb.doc(fb.db, "config", "eureka_erp_v10"), { lastFolio: f + 1 });
-                });
+            const c = document.getElementById('q-client').value;
+
+            if(!c || items.length === 0) {
+                alert("Faltan datos: selecciona cliente y agrega al menos un ítem");
+                return;
             }
-            const data = { folio: f, client: c, items, date: document.getElementById('q-date-input').value, neto: items.reduce((s,i)=>s+i.total,0), desc: document.getElementById('q-desc').value };
-            if(editingId) await fb.setDoc(fb.doc(fb.db, "erp_cotizaciones", editingId), data);
-            else await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), data);
-            await generateAndSharePDF(f, c, 'share');
-            items = []; editingId = null; renderPreview();
+
+            try {
+                let f = editingId ? window.currentFolio : (window.nextFolio || 1000);
+
+                if(!editingId) {
+                    await fb.runTransaction(fb.db, async (t) => {
+                        const ref = fb.doc(fb.db, "config", "eureka_erp_v10");
+                        const snap = await t.get(ref);
+
+                        f = snap.exists() ? Number(snap.data().lastFolio || 1000) : 1000;
+
+                        if(snap.exists()) {
+                            t.update(ref, { lastFolio: f + 1 });
+                        } else {
+                            t.set(ref, { lastFolio: f + 1 });
+                        }
+                    });
+                }
+
+                const data = {
+                    folio: f,
+                    client: c,
+                    items: items.map(it => ({
+                        name: it.name || "",
+                        price: Number(it.price || 0),
+                        qty: Number(it.qty || 0),
+                        total: Number(it.total || 0),
+                        img: it.img || null
+                    })),
+                    date: document.getElementById('q-date-input').value,
+                    neto: items.reduce((s,i)=>s + Number(i.total || 0),0),
+                    desc: document.getElementById('q-desc').value || ""
+                };
+
+                if(editingId) {
+                    await fb.setDoc(fb.doc(fb.db, "erp_cotizaciones", editingId), data);
+                } else {
+                    await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), data);
+                }
+
+                await generateAndSharePDF(f, c, 'share');
+
+                items = [];
+                tempImg = null;
+                editingId = null;
+                document.getElementById('q-desc').value = "";
+                const fileInput = document.getElementById('f-img');
+                if(fileInput) fileInput.value = "";
+
+                renderPreview();
+
+                alert("Cotización guardada correctamente");
+            } catch(err) {
+                console.error(err);
+                alert("No se pudo guardar. Revisa conexión, permisos de Firebase o el tamaño de las imágenes.");
+            }
         }
 
         // --- AYUDANTES ---
@@ -603,7 +679,35 @@
             window.clientes.forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
             document.getElementById('clients-list').innerHTML = window.clientes.map(c => `<div class="bg-slate-800 p-5 rounded-2xl flex justify-between border border-slate-700"><b>${c.name}</b><button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="icon-btn text-red-400">🗑️</button></div>`).join('');
         }
-        function addItem() { const n = document.getElementById('i-name').value.toUpperCase(), p = Number(document.getElementById('i-price').value), q = Number(document.getElementById('i-qty').value); if(!n || p <= 0) return; items.push({ name: n, price: p, qty: q, total: p*q, img: tempImg }); document.getElementById('i-name').value = ""; document.getElementById('i-price').value = ""; tempImg = null; renderPreview(); }
+        function addItem() {
+            const n = document.getElementById('i-name').value.trim().toUpperCase();
+            const p = Number(document.getElementById('i-price').value);
+            const q = Number(document.getElementById('i-qty').value);
+
+            if(!n || p <= 0 || q <= 0) {
+                alert("Completa descripción, cantidad y precio");
+                return;
+            }
+
+            items.push({
+                name: n,
+                price: p,
+                qty: q,
+                total: p * q,
+                img: tempImg || null
+            });
+
+            document.getElementById('i-name').value = "";
+            document.getElementById('i-price').value = "";
+            document.getElementById('i-qty').value = "1";
+
+            tempImg = null;
+            const inputImg = document.getElementById('f-img');
+            if(inputImg) inputImg.value = "";
+
+            renderPreview();
+        }
+
         function renderPreview() {
             const d = document.getElementById('q-date-input').value;
             document.getElementById('p-date').innerText = d ? new Date(d+'T12:00:00').toLocaleDateString('es-CL') : '--/--/----';
@@ -636,19 +740,19 @@
             const reader = new FileReader();
 
             reader.onload = e => {
-                const img = new Image();
+                const image = new Image();
 
-                img.onload = () => {
+                image.onload = () => {
                     const canvas = document.createElement('canvas');
                     const maxSize = 900;
 
-                    let w = img.width;
-                    let h = img.height;
+                    let w = image.width;
+                    let h = image.height;
 
-                    if (w > h && w > maxSize) {
+                    if(w > h && w > maxSize) {
                         h = Math.round(h * maxSize / w);
                         w = maxSize;
-                    } else if (h > maxSize) {
+                    } else if(h > maxSize) {
                         w = Math.round(w * maxSize / h);
                         h = maxSize;
                     }
@@ -657,13 +761,13 @@
                     canvas.height = h;
 
                     const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, w, h);
+                    ctx.drawImage(image, 0, 0, w, h);
 
                     tempImg = canvas.toDataURL('image/jpeg', 0.82);
-                    alert("Imagen cargada para el ítem. Ahora presiona Agregar Ítem.");
+                    alert("Imagen cargada. Ahora presiona Agregar Ítem.");
                 };
 
-                img.src = e.target.result;
+                image.src = e.target.result;
             };
 
             reader.readAsDataURL(file);
