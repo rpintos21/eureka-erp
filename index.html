@@ -258,7 +258,7 @@
                 <div id="pdf-canvas" class="pdf-page">
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 4px solid #0f172a; padding-bottom: 15px;">
-                            <img src="logo.png" style="height:70px; width:auto; object-fit:contain; display:block;">
+                            <img src="logo.png" style="height:70px;">
                             <div style="text-align:right;">
                                 <h2 id="p-folio" style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-1000</h2>
                                 <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b id="p-date" style="color:#0f172a"></b></p>
@@ -639,56 +639,6 @@
             setTimeout(() => tzFit('qv-body', 'cloned-pdf-wrapper'), 120);
         }
 
-
-        function loadLogoForPDF() {
-            return new Promise(resolve => {
-                const existing = document.querySelector('img[src="logo.png"], img[src="./logo.png"]');
-
-                if(existing && existing.complete && existing.naturalWidth > 0) {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = existing.naturalWidth;
-                        canvas.height = existing.naturalHeight;
-
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(existing, 0, 0);
-
-                        resolve({
-                            data: canvas.toDataURL('image/png'),
-                            width: canvas.width,
-                            height: canvas.height
-                        });
-                        return;
-                    } catch(e) {}
-                }
-
-                const img = new Image();
-
-                img.onload = () => {
-                    try {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = img.naturalWidth || img.width;
-                        canvas.height = img.naturalHeight || img.height;
-
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0);
-
-                        resolve({
-                            data: canvas.toDataURL('image/png'),
-                            width: canvas.width,
-                            height: canvas.height
-                        });
-                    } catch(e) {
-                        resolve(null);
-                    }
-                };
-
-                img.onerror = () => resolve(null);
-                img.src = "logo.png";
-            });
-        }
-
-
         function escapeHtmlSafe(value) {
             return String(value ?? "")
                 .replace(/&/g, "&amp;")
@@ -722,7 +672,7 @@
                 <div class="pdf-page" style="background:white !important; color:#1e293b !important; width:210mm; min-height:297mm; padding:15mm; display:flex; flex-direction:column; box-sizing:border-box; margin:0 auto;">
                     <div style="flex:1;">
                         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:25px; border-bottom:4px solid #0f172a; padding-bottom:15px;">
-                            <img src="logo.png" style="height:70px; width:auto; object-fit:contain; display:block;">
+                            <img src="logo.png" style="height:70px;">
                             <div style="text-align:right;">
                                 <h2 style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-${escapeHtmlSafe(h.folio || '')} | ${escapeHtmlSafe((h.desc || 'GENERAL').toUpperCase())}</h2>
                                 <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b style="color:#0f172a">${dateText}</b></p>
@@ -839,8 +789,6 @@
                 const iva = Math.round(neto * 0.19);
                 const total = neto + iva;
 
-                const logoPDF = await loadLogoForPDF();
-
                 let y = 15;
 
                 function addPageIfNeeded(needed) {
@@ -855,10 +803,26 @@
                     pdf.setTextColor(15, 23, 42);
 
                     if(!compact) {
-                        if(logoPDF && logoPDF.data) {
-                            const logoW = 62;
-                            const logoH = logoW / (logoPDF.width / logoPDF.height);
-                            pdf.addImage(logoPDF.data, 'PNG', m, y, logoW, logoH);
+                        try {
+                            const logoEl = document.querySelector('img[src="./logo.png"], img[src="logo.png"]');
+
+                            if(logoEl && logoEl.complete && logoEl.naturalWidth > 0 && logoEl.naturalHeight > 0) {
+                                const logoCanvas = document.createElement('canvas');
+                                logoCanvas.width = logoEl.naturalWidth;
+                                logoCanvas.height = logoEl.naturalHeight;
+
+                                const ctx = logoCanvas.getContext('2d');
+                                ctx.drawImage(logoEl, 0, 0);
+
+                                const logoData = logoCanvas.toDataURL('image/png');
+                                const logoRatio = logoCanvas.width / logoCanvas.height;
+                                const logoW = 58;
+                                const logoH = logoW / logoRatio;
+
+                                pdf.addImage(logoData, 'PNG', m, y, logoW, logoH);
+                            }
+                        } catch(e) {
+                            console.warn('No se pudo cargar logo en PDF', e);
                         }
 
                         pdf.setFontSize(16);
