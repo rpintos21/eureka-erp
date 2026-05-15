@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Eureka! ERP v122 - Fix Carga</title>
+    <title>Eureka! ERP v122 - WhatsApp corregido</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -27,10 +27,9 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Exponer Firebase al objeto window para que las funciones normales lo vean
         window.fb = { db, doc, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction };
 
-        // Esperar a que el DOM y los scripts de abajo estén definidos
+        // Asegurar que Firebase cargue después del DOM
         window.addEventListener("load", () => {
             onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
                 window.nextFolio = d.exists() ? Number(d.data().lastFolio) : 1000;
@@ -62,7 +61,6 @@
         .tab-content { display: none; width: 100%; padding: 20px; }
         .tab-content.active { display: block; }
 
-        /* Contenedores de visualización */
         .edit-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 20px; }
         .edit-row { display: flex; flex-direction: row; align-items: flex-start; gap: 32px; width: max-content; min-width: 100%; }
         .left-panel { width: 400px; min-width: 400px; flex-shrink: 0; }
@@ -71,28 +69,29 @@
         .viewer-container { width: 100%; overflow-x: auto; background: #020617; padding: 16px 0; min-height: 50vh; border-radius: 12px; display: flex; justify-content: flex-start; }
         .viewer-inner { width: fit-content; flex-shrink: 0; }
 
-        /* Estilo Hoja PDF */
         .pdf-page { 
             width: 794px; min-width: 794px; min-height: 1123px; padding: 45px; 
             background: #ffffff !important; color: #1e293b !important; 
             display: flex; flex-direction: column; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
         }
 
-        /* Iconos Empresa */
-        .ci-line { display: flex; align-items: center; gap: 15px; margin-bottom: 8px; font-size: 14px; }
-        .ci-icon { width: 24px; height: 24px; background-size: contain; background-repeat: no-repeat; background-position: center; }
+        .quote-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; margin-bottom: 22px; border-bottom: 4px solid #0f172a; padding-bottom: 16px; }
+        .company-info { margin-top: 14px; display: flex; flex-direction: column; gap: 11px; color: #0f172a; font-size: 15px; line-height: 1.32; }
+        .ci-line { display: flex; align-items: center; gap: 15px; }
+        .ci-icon { width: 28px; height: 28px; background-repeat: no-repeat; background-position: center; background-size: contain; }
+        
         .ci-map { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Cpath%20fill%3D%27%23ef4444%27%20d%3D%27M32%203C20%203%2010%2013%2010%2025c0%2017%2022%2036%2022%2036s22-19%2022-36C54%2013%2044%203%2032%203z%27/%3E%3Ccircle%20fill%3D%27%23fff%27%20cx%3D%2732%27%20cy%3D%2725%27%20r%3D%278%27/%3E%3C/svg%3E"); }
         .ci-mail { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Ccircle%20fill%3D%27%232563eb%27%20cx%3D%2732%27%20cy%3D%2732%27%20r%3D%2728%27/%3E%3Cpath%20fill%3D%27%23fff%27%20d%3D%27M16%2022h32v22H16z%27/%3E%3Cpath%20stroke%3D%27%232563eb%27%20stroke-width%3D%272%27%20d%3D%27M16%2024l16%2012%2016-12%27/%3E%3C/svg%3E"); }
-        /* Icono WhatsApp Original corregido */
+        /* Icono WhatsApp Original Corregido */
         .ci-wa { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20448%20512%27%3E%3Cpath%20fill%3D%27%2325d366%27%20d%3D%27M380.9%2097.1C339%2055.1%20283.2%2032%20223.9%2032c-122.4%200-222%2099.6-222%20222%200%2039.1%2010.2%2077.3%2029.6%20111L0%20480l117.7-30.9c32.4%2017.7%2068.9%2027%20106.1%2027h.1c122.3%200%20224.1-99.6%20224.1-222%200-59.3-25.2-115-67.1-157zm-157%20341.6c-33.1%200-65.6-8.9-93.3-25.7l-6.7-4-69.5%2018.3%2018.7-67.7-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2%200-101.7%2082.8-184.5%20184.6-184.5%2049.3%200%2095.6%2019.2%20130.5%2054.1%2034.8%2034.9%2056.2%2081.2%2056.1%20130.5%200%20101.8-84.9%20184.6-186.6%20184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5%202.8-3.7%205.6-14.3%2018-17.6%2021.8-3.2%203.7-6.5%204.2-12%201.4-5.5-2.8-23.2-8.5-44.2-27.1-16.4-14.6-27.4-32.7-30.6-38.2-3.2-5.6-.3-8.6%202.5-11.3%202.5-2.5%205.5-5.6%208.3-8.3%202.8-2.8%203.7-4.7%205.5-7.9%201.8-3.2.9-6-0.5-8.8-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-0.2-6.9-0.2-10.6-0.2-3.7%200-9.7%201.4-14.8%206.9-5.1%205.6-19.4%2019-19.4%2046.3%200%2027.3%2019.9%2053.7%2022.6%2057.4%202.8%203.7%2039.1%2059.7%2094.8%2083.8%2013.2%205.7%2023.5%209.2%2031.6%2011.8%2013.3%204.2%2025.4%203.6%2035%202.1%2010.7-1.7%2032.8-13.4%2037.4-26.4%204.6-13%204.6-24.1%203.2-26.4-1.3-2.5-5-3.9-10.5-6.6z%27/%3E%3C/svg%3E"); }
+        .ci-ig { background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2064%2064%27%3E%3Crect%20x%3D%278%27%20y%3D%278%27%20width%3D%2748%27%20height%3D%2748%27%20rx%3D%2714%27%20fill%3D%27%23d62976%27/%3E%3Ccircle%20cx%3D%2732%27%20cy%3D%2732%27%20r%3D%2712%27%20fill%3D%27none%27%20stroke%3D%27%23fff%27%20stroke-width%3D%274%27/%3E%3Ccircle%20cx%3D%2745%27%20cy%3D%2719%27%20r%3D%273%27%20fill%3D%27%23fff%27/%3E%3C/svg%3E"); }
 
         .items-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         .items-table th { background: #0f172a; color: white; padding: 10px; font-size: 10px; text-transform: uppercase; text-align: left; }
         .items-table td { border-bottom: 1px solid #e2e8f0; padding: 12px 10px; font-size: 12px; color: #1e293b; vertical-align: top; }
-        .item-img { max-width: 80px; max-height: 80px; object-fit: contain; }
 
         #quick-view-modal { position: fixed; inset: 0; background: #020617; z-index: 2000; display: none; flex-direction: column; }
-        .icon-btn { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: #1e293b; color: white; border: 1px solid #334155; cursor: pointer; }
+        .icon-btn { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: #1e293b; color: white; border: 1px solid #334155; }
 
         @media (max-width: 700px) {
             .left-panel { width: 100%; min-width: 100%; }
@@ -102,7 +101,6 @@
     </style>
 </head>
 <body>
-
     <nav class="flex bg-slate-950 border-b border-slate-800 sticky top-0 z-[100] h-[60px]">
         <button onclick="navTo('edit')" id="m-edit" class="flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-blue-500 border-b-2 border-blue-500">Cotizador</button>
         <button onclick="navTo('hist')" id="m-hist" class="flex-1 p-4 font-black text-[11px] uppercase tracking-widest text-slate-500 border-b-2 border-transparent">Historial</button>
@@ -117,8 +115,8 @@
                 <button id="qv-download-btn" class="icon-btn text-blue-400">⬇️</button>
             </div>
         </div>
-        <div id="qv-body" class="p-4 overflow-auto flex justify-center">
-            <div id="cloned-pdf-target"></div>
+        <div id="qv-body" class="overflow-auto flex justify-center">
+            <div id="cloned-pdf-target" class="pdf-page"></div>
         </div>
     </div>
 
@@ -144,7 +142,6 @@
                     <div id="items-list" class="space-y-2"></div>
                     <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-6 rounded-2xl font-black text-lg uppercase shadow-2xl">Guardar y Enviar</button>
                 </div>
-
                 <div class="preview-column">
                     <div class="viewer-container">
                         <div class="viewer-inner">
@@ -178,14 +175,12 @@
 
         function navTo(sec) {
             ["edit", "hist", "clients"].forEach(s => {
-                const el = document.getElementById("sec-" + s);
+                document.getElementById("sec-" + s).classList.toggle("active", s === sec);
                 const btn = document.getElementById("m-" + s);
                 if (s === sec) {
-                    el.classList.add("active");
                     btn.classList.add("text-blue-500", "border-blue-500");
                     btn.classList.remove("text-slate-500", "border-transparent");
                 } else {
-                    el.classList.remove("active");
                     btn.classList.remove("text-blue-500", "border-blue-500");
                     btn.classList.add("text-slate-500", "border-transparent");
                 }
@@ -201,7 +196,7 @@
 
             return `
                 <div style="flex: 1; display: flex; flex-direction: column;">
-                    <div style="display: flex; justify-content: space-between; border-bottom: 4px solid #0f172a; padding-bottom: 15px; margin-bottom: 20px;">
+                    <div class="quote-header">
                         <div>
                             <div style="font-size: 28px; font-weight: 900; color: #0f172a;">EUREKA!</div>
                             <div class="company-info">
@@ -213,44 +208,33 @@
                         <div style="text-align: right;">
                             <h2 style="margin: 0; color: #0f172a;">COT-${folio}</h2>
                             <p style="margin: 5px 0; font-size: 12px; color: #64748b;">FECHA: <b>${date}</b></p>
-                            <p style="margin: 0; font-size: 11px; color: #2563eb; font-weight: 700;">${desc.toUpperCase() || 'GENERAL'}</p>
+                            <p style="margin: 0; font-size: 11px; color: #2563eb; font-weight: 700;">${(desc || "GENERAL").toUpperCase()}</p>
                         </div>
                     </div>
-
                     <div style="background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 20px; display: flex; justify-content: space-between;">
                         <div style="width: 60%;">
                             <p style="font-size: 9px; color: #64748b; font-weight: 800; margin: 0;">CLIENTE:</p>
                             <b style="font-size: 16px; color: #0f172a;">${client || '---'}</b>
                             <p style="font-size: 12px; margin-top: 5px;">${c.address || ''}</p>
                         </div>
-                        <div style="text-align: right;">
-                            <p style="font-size: 9px; color: #64748b; font-weight: 800; margin: 0;">CONTACTO:</p>
-                            <p style="font-size: 12px; font-weight: 700;">${c.phone || ''}</p>
-                        </div>
                     </div>
-
                     <table class="items-table">
                         <thead><tr><th>Cant</th><th>Descripción</th><th style="text-align: right;">Total</th></tr></thead>
                         <tbody>
                             ${itemsArr.map(it => `
                                 <tr>
                                     <td style="font-weight: 700;">${it.qty}</td>
-                                    <td>${it.name} ${it.img ? '<br><img src="'+it.img+'" class="item-img">' : ''}</td>
+                                    <td>${it.name}</td>
                                     <td style="text-align: right; font-weight: 700;">$${it.total.toLocaleString('es-CL')}</td>
-                                </tr>
-                            `).join('')}
+                                </tr>`).join('')}
                         </tbody>
                     </table>
-
-                    <div style="margin-top: auto; padding-top: 30px; display: flex; justify-content: flex-end;">
-                        <div style="width: 250px; text-align: right;">
-                            <div style="display: flex; justify-content: space-between; font-size: 14px;"><span>Neto:</span><b>$${subtotal.toLocaleString('es-CL')}</b></div>
-                            <div style="display: flex; justify-content: space-between; font-size: 14px; border-bottom: 2px solid #0f172a; padding-bottom: 5px;"><span>IVA (19%):</span><b>$${iva.toLocaleString('es-CL')}</b></div>
-                            <div style="display: flex; justify-content: space-between; padding-top: 10px;"><span style="font-weight: 900;">TOTAL</span><h2 style="margin: 0; color: #0f172a;">$${total.toLocaleString('es-CL')}</h2></div>
-                        </div>
+                    <div style="margin-top: auto; padding-top: 30px; text-align: right;">
+                        <p>Neto: $${subtotal.toLocaleString('es-CL')}</p>
+                        <p>IVA: $${iva.toLocaleString('es-CL')}</p>
+                        <h2 style="color: #0f172a;">TOTAL: $${total.toLocaleString('es-CL')}</h2>
                     </div>
-                </div>
-            `;
+                </div>`;
         }
 
         window.renderPreview = function() {
@@ -261,5 +245,44 @@
             const date = document.getElementById("q-date-input").value;
             const desc = document.getElementById("q-desc").value;
             canvas.innerHTML = getBaseHTML(folio, client, date, items, desc);
+        };
 
-            document.getElementById("items-list").innerHTML =
+        window.renderHistory = function() {
+            const container = document.getElementById("history-content");
+            if (!container) return;
+            const filtered = (window.historial || []);
+            container.innerHTML = filtered.map(h => `
+                <div class="bg-slate-800 p-5 rounded-2xl flex justify-between items-center border-l-4 border-blue-500 shadow-lg mb-2">
+                    <div><b class="text-white">${h.client}</b><br><small class="text-blue-400">#${h.folio}</small></div>
+                    <div class="flex gap-2">
+                        <button onclick='openQuickView(${JSON.stringify(h)})' class="icon-btn">🔍</button>
+                        <button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="icon-btn text-red-400">🗑️</button>
+                    </div>
+                </div>`).join('');
+        };
+
+        window.updateUI = function() {
+            const sel = document.getElementById("q-client");
+            if (!sel) return;
+            sel.innerHTML = '<option value="">-- CLIENTE --</option><option value="NEW">+ NUEVO</option>';
+            (window.clientes || []).forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+        };
+
+        window.addItem = function() {
+            const n = document.getElementById("i-name").value.toUpperCase();
+            const p = Number(document.getElementById("i-price").value);
+            const q = Number(document.getElementById("i-qty").value || 1);
+            if (!n || p <= 0) return alert("Faltan datos");
+            items.push({ name: n, price: p, qty: q, total: p * q, img: tempImg });
+            renderPreview();
+        };
+
+        window.openQuickView = function(h) {
+            document.getElementById("quick-view-modal").style.display = "flex";
+            document.getElementById("cloned-pdf-target").innerHTML = getBaseHTML(h.folio, h.client, h.date, h.items, h.desc || '');
+        };
+
+        window.closeQuickView = () => document.getElementById("quick-view-modal").style.display = "none";
+    </script>
+</body>
+</html>
