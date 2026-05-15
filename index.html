@@ -43,11 +43,11 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; background: #020617; color: #f1f5f9; margin: 0; overflow-x: hidden; }
-        .input-dark { background: #1e293b; border: 1px solid #334155; padding: 14px; border-radius: 12px; width: 100%; color: white; outline: none; font-size: 16px; box-sizing: border-box; }
-        .tab-content { display: none; width: 100%; padding: 20px; box-sizing: border-box; }
+        .input-dark { background: #1e293b; border: 1px solid #334155; padding: 14px; border-radius: 12px; width: 100%; color: white; outline: none; font-size: 16px; }
+        .tab-content { display: none; width: 100%; padding: 20px; }
         .tab-content.active { display: block; }
 
-        /* Hoja A4 real */
+        /* Estilo Hoja A4 */
         .pdf-page { 
             background: white !important; 
             color: #1e293b !important; 
@@ -60,48 +60,26 @@
             margin: 0 auto;
         }
 
-        /* Preliminar del cotizador: estable, no congela formulario */
+        /* Preliminar Adaptativo (Volvemos a lo que funcionaba) */
         #preliminar-container {
             width: 100%;
-            height: 70vh;
-            min-height: 520px;
-            overflow: hidden;
-            padding: 0;
+            overflow: auto;
+            padding: 20px 0;
             background: #020617;
-            position: relative;
             -webkit-overflow-scrolling: touch;
-            touch-action: none;
-            border-radius: 18px;
-        }
-
-        #pdf-preview-wrapper {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: fit-content;
-            transform-origin: 0 0;
-            will-change: transform;
-        }
-
-        #pdf-canvas {
-            zoom: 1 !important;
-            transform: none !important;
-            margin: 0 !important;
         }
 
         @media (max-width: 1024px) {
-            #preliminar-container {
-                height: 68vh;
-                min-height: 460px;
+            #pdf-canvas {
+                zoom: 0.45;
+                margin: 0 auto;
             }
         }
 
-        /* Modal lupa historial */
+        /* Modal Lupa */
         #quick-view-modal {
             position: fixed;
             inset: 0;
-            width: 100vw;
-            height: 100vh;
             background: #020617;
             z-index: 99999;
             display: none;
@@ -120,44 +98,31 @@
 
         #qv-body {
             flex: 1;
-            overflow: hidden;
-            padding: 0;
+            overflow: auto;
+            padding: 20px;
             -webkit-overflow-scrolling: touch;
-            background: #020617;
-            position: relative;
-            touch-action: none;
         }
 
         #cloned-pdf-wrapper {
-            position: absolute;
-            top: 0;
-            left: 0;
             width: fit-content;
-            margin: 0;
-            transform-origin: 0 0;
-            will-change: transform;
+            margin: 0 auto;
         }
 
         #cloned-pdf-wrapper .pdf-page {
             zoom: 1 !important;
             transform: none !important;
-            margin: 0 !important;
             box-shadow: 0 0 30px rgba(0,0,0,0.5);
         }
 
-        .icon-btn {
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            background: #1e293b;
-            font-size: 20px;
-            color: white;
-            border: none;
-            cursor: pointer;
+        @media (max-width: 1024px) {
+            #cloned-pdf-wrapper {
+                transform: scale(0.45);
+                transform-origin: top center;
+                margin-bottom: -160mm;
+            }
         }
+
+        .icon-btn { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1e293b; font-size: 20px; color: white; }
     </style>
 </head>
 <body>
@@ -204,7 +169,6 @@
             </div>
 
             <div id="preliminar-container">
-                <div id="pdf-preview-wrapper">
                 <div id="pdf-canvas" class="pdf-page">
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 4px solid #0f172a; padding-bottom: 15px;">
@@ -248,7 +212,6 @@
                         </div>
                     </div>
                 </div>
-                </div>
             </div>
         </div>
     </div>
@@ -271,10 +234,8 @@
     <script>
         let items = [], tempImg = null, editingId = null;
         document.getElementById('q-date-input').valueAsDate = new Date();
-        window.addEventListener('load', () => initCotizadorZoom(true));
 
         function navTo(sec) {
-            closeQuickView();
             ['edit', 'hist', 'clients'].forEach(s => {
                 document.getElementById('sec-'+s).classList.toggle('active', s === sec);
                 const btn = document.getElementById('m-'+s);
@@ -283,166 +244,6 @@
             });
             window.scrollTo(0,0);
         }
-
-
-        // --- ZOOM INTERNO CON DOS DEDOS SOLO EN PRELIMINARES ---
-        const internalZoom = {};
-
-        function distTouches(touches) {
-            const dx = touches[0].clientX - touches[1].clientX;
-            const dy = touches[0].clientY - touches[1].clientY;
-            return Math.hypot(dx, dy);
-        }
-
-        function centerTouches(touches) {
-            return {
-                x: (touches[0].clientX + touches[1].clientX) / 2,
-                y: (touches[0].clientY + touches[1].clientY) / 2
-            };
-        }
-
-        function applyInternalZoom(contentId) {
-            const content = document.getElementById(contentId);
-            const st = internalZoom[contentId];
-            if (!content || !st) return;
-            content.style.transform = `translate3d(${st.x}px, ${st.y}px, 0) scale(${st.scale})`;
-        }
-
-        function fitInternalZoom(containerId, contentId) {
-            const container = document.getElementById(containerId);
-            const content = document.getElementById(contentId);
-            if (!container || !content) return;
-
-            const page = content.querySelector('.pdf-page') || content;
-            const cw = container.clientWidth;
-            const ch = container.clientHeight;
-            const pw = page.offsetWidth;
-            const ph = page.offsetHeight;
-
-            if (!cw || !ch || !pw || !ph) {
-                setTimeout(() => fitInternalZoom(containerId, contentId), 150);
-                return;
-            }
-
-            const pad = 16;
-            const fit = Math.min((cw - pad * 2) / pw, (ch - pad * 2) / ph);
-            const scale = Math.max(0.12, Math.min(1, fit));
-
-            internalZoom[contentId] = {
-                scale,
-                minScale: scale,
-                maxScale: 4,
-                x: (cw - pw * scale) / 2,
-                y: Math.max(8, (ch - ph * scale) / 2),
-                dragging: false,
-                startX: 0,
-                startY: 0,
-                startDist: 0,
-                startScale: scale,
-                pinchStartX: 0,
-                pinchStartY: 0,
-                pinchCenterX: 0,
-                pinchCenterY: 0
-            };
-
-            applyInternalZoom(contentId);
-        }
-
-        function setupInternalZoom(containerId, contentId) {
-            const container = document.getElementById(containerId);
-            if (!container || container.dataset.internalZoomReady === "1") return;
-
-            container.dataset.internalZoomReady = "1";
-
-            container.addEventListener('touchstart', function(e) {
-                const st = internalZoom[contentId];
-                if (!st) return;
-
-                if (e.touches.length === 1) {
-                    e.preventDefault();
-                    st.dragging = true;
-                    st.startX = e.touches[0].clientX - st.x;
-                    st.startY = e.touches[0].clientY - st.y;
-                }
-
-                if (e.touches.length === 2) {
-                    e.preventDefault();
-                    st.dragging = false;
-                    st.startDist = distTouches(e.touches);
-                    st.startScale = st.scale;
-
-                    const c = centerTouches(e.touches);
-                    st.pinchCenterX = c.x;
-                    st.pinchCenterY = c.y;
-                    st.pinchStartX = st.x;
-                    st.pinchStartY = st.y;
-                }
-            }, { passive: false });
-
-            container.addEventListener('touchmove', function(e) {
-                const st = internalZoom[contentId];
-                if (!st) return;
-                e.preventDefault();
-
-                if (e.touches.length === 1 && st.dragging) {
-                    st.x = e.touches[0].clientX - st.startX;
-                    st.y = e.touches[0].clientY - st.startY;
-                    applyInternalZoom(contentId);
-                }
-
-                if (e.touches.length === 2 && st.startDist > 0) {
-                    const newDist = distTouches(e.touches);
-                    const rawScale = st.startScale * (newDist / st.startDist);
-                    const newScale = Math.min(st.maxScale, Math.max(st.minScale, rawScale));
-                    const ratio = newScale / st.startScale;
-
-                    const c = centerTouches(e.touches);
-                    st.scale = newScale;
-                    st.x = c.x - (st.pinchCenterX - st.pinchStartX) * ratio;
-                    st.y = c.y - (st.pinchCenterY - st.pinchStartY) * ratio;
-
-                    applyInternalZoom(contentId);
-                }
-            }, { passive: false });
-
-            container.addEventListener('touchend', function(e) {
-                const st = internalZoom[contentId];
-                if (!st) return;
-                if (e.touches.length === 0) {
-                    st.dragging = false;
-                    st.startDist = 0;
-                }
-            }, { passive: false });
-
-            container.addEventListener('dblclick', function(e) {
-                const st = internalZoom[contentId];
-                if (!st) return;
-                e.preventDefault();
-
-                if (st.scale <= st.minScale + 0.03) {
-                    st.scale = Math.min(2, st.maxScale);
-                    st.x = 20;
-                    st.y = 20;
-                    applyInternalZoom(contentId);
-                } else {
-                    fitInternalZoom(containerId, contentId);
-                }
-            });
-        }
-
-        function initCotizadorZoom(force = false) {
-            setupInternalZoom('preliminar-container', 'pdf-preview-wrapper');
-            if (force || !internalZoom['pdf-preview-wrapper']) {
-                setTimeout(() => fitInternalZoom('preliminar-container', 'pdf-preview-wrapper'), 120);
-            }
-        }
-
-        function initHistorialZoom() {
-            delete internalZoom['cloned-pdf-wrapper'];
-            setupInternalZoom('qv-body', 'cloned-pdf-wrapper');
-            setTimeout(() => fitInternalZoom('qv-body', 'cloned-pdf-wrapper'), 180);
-        }
-
 
         // --- LUPA: FIX HOJA EN BLANCO ---
         async function openQuickView(h) {
@@ -468,42 +269,40 @@
 
             renderPreview();
 
-            await new Promise(resolve => setTimeout(resolve, 120));
+            setTimeout(() => {
+                const clone = document.getElementById('pdf-canvas').cloneNode(true);
+                clone.removeAttribute("id");
+                clone.style.zoom = "1";
+                clone.style.transform = "none";
+                clone.style.margin = "0 auto";
+                clone.style.width = "210mm";
+                clone.style.minHeight = "297mm";
+                clone.style.background = "#ffffff";
 
-            const clone = document.getElementById('pdf-canvas').cloneNode(true);
-            clone.removeAttribute("id");
-            clone.style.zoom = "1";
-            clone.style.transform = "none";
-            clone.style.margin = "0 auto";
-            clone.style.width = "210mm";
-            clone.style.minHeight = "297mm";
-            clone.style.background = "#ffffff";
+                wrapper.innerHTML = "";
+                wrapper.appendChild(clone);
 
-            wrapper.appendChild(clone);
+                document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share');
+                document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save');
 
-            document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share');
-            document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save');
+                modal.style.display = "flex";
+                document.body.style.overflow = "hidden";
 
-            modal.style.display = "flex";
-            document.body.style.overflow = "hidden";
-            initHistorialZoom();
-
-            items = [...backup.it];
-            document.getElementById('q-client').value = backup.c;
-            window.currentFolio = backup.f;
-            editingId = backup.id;
-            document.getElementById('q-date-input').value = backup.d;
-            document.getElementById('q-desc').value = backup.ds;
-            renderPreview();
+                items = [...backup.it];
+                document.getElementById('q-client').value = backup.c;
+                window.currentFolio = backup.f;
+                editingId = backup.id;
+                document.getElementById('q-date-input').value = backup.d;
+                document.getElementById('q-desc').value = backup.ds;
+                renderPreview();
+            }, 120);
         }
 
         function closeQuickView() {
             const modal = document.getElementById('quick-view-modal');
             const wrapper = document.getElementById('cloned-pdf-wrapper');
-            modal.style.display = "none";
-            wrapper.innerHTML = "";
-            wrapper.style.transform = "";
-            delete internalZoom["cloned-pdf-wrapper"];
+            if(modal) modal.style.display = "none";
+            if(wrapper) wrapper.innerHTML = "";
             document.body.style.overflow = "";
         }
 
@@ -603,32 +402,7 @@
             window.clientes.forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
             document.getElementById('clients-list').innerHTML = window.clientes.map(c => `<div class="bg-slate-800 p-5 rounded-2xl flex justify-between border border-slate-700"><b>${c.name}</b><button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="icon-btn text-red-400">🗑️</button></div>`).join('');
         }
-        function addItem() {
-            const n = document.getElementById('i-name').value.toUpperCase().trim();
-            const p = Number(document.getElementById('i-price').value);
-            const q = Number(document.getElementById('i-qty').value);
-
-            if(!n || p <= 0 || q <= 0) return alert("Completa descripción, cantidad y precio");
-
-            items.push({
-                name: n,
-                price: p,
-                qty: q,
-                total: p * q,
-                img: tempImg || null
-            });
-
-            document.getElementById('i-name').value = "";
-            document.getElementById('i-price').value = "";
-            document.getElementById('i-qty').value = "1";
-
-            tempImg = null;
-            const fileInput = document.getElementById('f-img');
-            if(fileInput) fileInput.value = "";
-
-            renderPreview();
-        }
-
+        function addItem() { const n = document.getElementById('i-name').value.toUpperCase(), p = Number(document.getElementById('i-price').value), q = Number(document.getElementById('i-qty').value); if(!n || p <= 0) return; items.push({ name: n, price: p, qty: q, total: p*q, img: tempImg }); document.getElementById('i-name').value = ""; document.getElementById('i-price').value = ""; tempImg = null; renderPreview(); }
         function renderPreview() {
             const d = document.getElementById('q-date-input').value;
             document.getElementById('p-date').innerText = d ? new Date(d+'T12:00:00').toLocaleDateString('es-CL') : '--/--/----';
@@ -645,28 +419,11 @@
             document.getElementById('p-iva').innerText = `$${v.toLocaleString('es-CL')}`;
             document.getElementById('p-total').innerText = `$${(n + v).toLocaleString('es-CL')}`;
             document.getElementById('items-list').innerHTML = items.map((it, i) => `<div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center"><span class="truncate w-2/3 text-white text-xs font-bold uppercase">${it.name}</span><button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2">✕</button></div>`).join('');
-            initCotizadorZoom(false);
         }
         function loadEdit(id) { const h = window.historial.find(x => x.id === id); items = h.items; editingId = id; window.currentFolio = h.folio; document.getElementById('q-client').value = h.client; document.getElementById('q-date-input').value = h.date; document.getElementById('q-desc').value = h.desc || ""; navTo('edit'); renderPreview(); }
-        function handleImg(i) {
-            if(i.files && i.files[0]) {
-                const r = new FileReader();
-                r.onload = e => {
-                    tempImg = e.target.result;
-                    alert("Imagen cargada. Ahora presiona Agregar Ítem.");
-                };
-                r.readAsDataURL(i.files[0]);
-            }
-        }; r.readAsDataURL(i.files[0]); } }
+        function handleImg(i) { if(i.files[0]) { const r = new FileReader(); r.onload = e => { tempImg = e.target.result; renderPreview(); }; r.readAsDataURL(i.files[0]); } }
         async function saveClient() { const data = { name: document.getElementById('c-name').value.toUpperCase(), phone: document.getElementById('c-phone').value, address: document.getElementById('c-address').value }; if(data.name) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), data); ['c-name', 'c-phone', 'c-address'].forEach(id => document.getElementById(id).value = ''); navTo('edit'); }
         function checkNewClient(el) { if(el.value === "NEW") { navTo('clients'); el.value=""; } else renderPreview(); }
-            window.addEventListener('resize', () => {
-            setTimeout(() => initCotizadorZoom(true), 150);
-            const modal = document.getElementById('quick-view-modal');
-            if (modal && modal.style.display === "flex") {
-                setTimeout(initHistorialZoom, 150);
-            }
-        });
     </script>
 </body>
 </html>
