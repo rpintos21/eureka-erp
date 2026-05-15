@@ -98,12 +98,35 @@
             margin: 0 auto;
         }
 
-        #preliminar-container { width: 100%; overflow-x: auto; padding: 20px 0; background: #020617; display: flex; justify-content: center; }
+        #preliminar-container {
+            width: 100%;
+            overflow: hidden;
+            padding: 20px 0;
+            background: #020617;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        #pdf-preview-scale {
+            width: fit-content;
+            transform-origin: top center;
+        }
+
         @media (max-width: 1024px) {
-            #pdf-canvas {
+            #pdf-preview-scale {
                 transform: scale(0.45);
-                transform-origin: top center;
                 margin-bottom: -160mm;
+            }
+
+            #preliminar-container {
+                min-height: 480px;
+            }
+
+            #pdf-canvas {
+                transform: none !important;
+                zoom: 1 !important;
+                margin: 0 auto;
             }
         }
 
@@ -123,7 +146,6 @@
             margin: 0;
             transform-origin: top left;
             will-change: transform;
-            cursor: grab;
         }
         #cloned-pdf-wrapper .pdf-page {
             zoom: 1 !important;
@@ -179,6 +201,7 @@
             </div>
 
             <div id="preliminar-container">
+                <div id="pdf-preview-scale">
                 <div id="pdf-canvas" class="pdf-page">
                     <div style="flex: 1;">
                         <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 4px solid #0f172a; padding-bottom: 15px;">
@@ -231,6 +254,7 @@
                             <div style="text-align: right;">🌐 www.eurekalaboratorio.cl | 📞 +56 9 8827 7250</div>
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
@@ -735,6 +759,12 @@
         window.checkNewClient = checkNewClient;
         window.deleteQuote = deleteQuote;
         window.deleteClient = deleteClient;
+            window.addEventListener('resize', () => {
+            const modal = document.getElementById('quick-view-modal');
+            if (modal && modal.style.display === "flex") {
+                resetQuickViewZoom();
+            }
+        });
     </script>
 </body>
 </html>
