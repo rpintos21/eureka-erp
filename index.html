@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Eureka! ERP v108 - PDF guardar robusto</title>
+    <title>Eureka! ERP v109 - Footer empresa restaurado</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -320,6 +320,23 @@
             white-space: nowrap;
         }
 
+
+        .company-footer {
+            margin-top: 18px;
+            padding-top: 10px;
+            border-top: 1px solid #cbd5e1;
+            text-align: center;
+            color: #64748b;
+            font-size: 9px;
+            line-height: 1.45;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .company-footer b {
+            color: #0f172a;
+        }
+
         #quick-view-modal {
             position: fixed;
             inset: 0;
@@ -498,6 +515,14 @@
                 max-width: 100%;
                 overflow: visible;
                 white-space: nowrap;
+            }
+
+
+            .company-footer {
+                margin-top: 14px;
+                padding-top: 8px;
+                font-size: 6.8px;
+                line-height: 1.35;
             }
 
             #qv-body {
@@ -737,6 +762,12 @@
                                 <div class="final-total"><span style="font-size:12px; font-weight:900;">TOTAL</span><h2>$${formatMoney(total)}</h2></div>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="company-footer">
+                        <b>LABORATORIO CREATIVO EUREKA SPA</b> · RUT 76.823.326-8<br>
+                        Isla de Maipo, Región Metropolitana · contacto@eurekalaboratorio.cl<br>
+                        Cotización válida por 15 días. Valores expresados en pesos chilenos.
                     </div>
                 </div>
             `;
