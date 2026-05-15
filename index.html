@@ -159,9 +159,10 @@
                     <div class="flex gap-3">
                         <input type="number" id="i-qty" value="1" class="input-dark text-center w-20">
                         <input type="number" id="i-price" placeholder="$ Precio" class="input-dark flex-1">
-                        <button onclick="document.getElementById('f-img').click()" class="bg-slate-700 px-4 rounded-xl">📷</button>
+                        <label for="f-img" id="img-btn" class="bg-slate-700 px-4 rounded-xl flex items-center justify-center cursor-pointer min-w-[54px]">📷</label>
                     </div>
                     <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
+                    <div id="img-status" class="hidden bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-emerald-300 font-bold"></div>
                     <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase">Agregar Ítem</button>
                 </div>
                 <div id="items-list" class="space-y-2"></div>
@@ -246,6 +247,12 @@
         }
 
         // --- LUPA: FIX HOJA EN BLANCO ---
+        function openQuickViewById(id) {
+            const h = (window.historial || []).find(x => x.id === id);
+            if(!h) return alert("No se encontró la cotización");
+            openQuickView(h);
+        }
+
         async function openQuickView(h) {
             const modal = document.getElementById('quick-view-modal');
             const wrapper = document.getElementById('cloned-pdf-wrapper');
@@ -390,7 +397,7 @@
                 <div class="bg-slate-800 p-5 rounded-2xl border-l-4 border-blue-500 shadow-xl flex justify-between items-center">
                     <div class="truncate mr-4"><b class="text-white uppercase text-sm">${h.client}</b><br><small class="text-blue-400 font-bold">#${h.folio}</small></div>
                     <div class="flex gap-2">
-                        <button onclick='openQuickView(${JSON.stringify(h)})' class="icon-btn">🔍</button>
+                        <button onclick="openQuickViewById('${h.id}')" class="icon-btn">🔍</button>
                         <button onclick="loadEdit('${h.id}')" class="icon-btn text-blue-400">✏️</button>
                         <button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="icon-btn text-red-400">🗑️</button>
                     </div>
@@ -402,7 +409,43 @@
             window.clientes.forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
             document.getElementById('clients-list').innerHTML = window.clientes.map(c => `<div class="bg-slate-800 p-5 rounded-2xl flex justify-between border border-slate-700"><b>${c.name}</b><button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="icon-btn text-red-400">🗑️</button></div>`).join('');
         }
-        function addItem() { const n = document.getElementById('i-name').value.toUpperCase(), p = Number(document.getElementById('i-price').value), q = Number(document.getElementById('i-qty').value); if(!n || p <= 0) return; items.push({ name: n, price: p, qty: q, total: p*q, img: tempImg }); document.getElementById('i-name').value = ""; document.getElementById('i-price').value = ""; tempImg = null; renderPreview(); }
+        function addItem() {
+            const n = document.getElementById('i-name').value.toUpperCase().trim();
+            const p = Number(document.getElementById('i-price').value);
+            const q = Number(document.getElementById('i-qty').value);
+
+            if(!n || p <= 0 || q <= 0) {
+                alert("Completa descripción, cantidad y precio");
+                return;
+            }
+
+            items.push({
+                name: n,
+                price: p,
+                qty: q,
+                total: p * q,
+                img: tempImg || null
+            });
+
+            document.getElementById('i-name').value = "";
+            document.getElementById('i-price').value = "";
+            document.getElementById('i-qty').value = "1";
+
+            tempImg = null;
+
+            const fileInput = document.getElementById('f-img');
+            const status = document.getElementById('img-status');
+            const btn = document.getElementById('img-btn');
+
+            if(fileInput) fileInput.value = "";
+            if(status) {
+                status.classList.add('hidden');
+                status.innerHTML = "";
+            }
+            if(btn) btn.innerText = "📷";
+
+            renderPreview();
+        }
         function renderPreview() {
             const d = document.getElementById('q-date-input').value;
             document.getElementById('p-date').innerText = d ? new Date(d+'T12:00:00').toLocaleDateString('es-CL') : '--/--/----';
@@ -418,10 +461,88 @@
             document.getElementById('p-sub').innerText = `$${n.toLocaleString('es-CL')}`;
             document.getElementById('p-iva').innerText = `$${v.toLocaleString('es-CL')}`;
             document.getElementById('p-total').innerText = `$${(n + v).toLocaleString('es-CL')}`;
-            document.getElementById('items-list').innerHTML = items.map((it, i) => `<div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center"><span class="truncate w-2/3 text-white text-xs font-bold uppercase">${it.name}</span><button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2">✕</button></div>`).join('');
+            document.getElementById('items-list').innerHTML = items.map((it, i) => `
+                <div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center gap-3">
+                    ${it.img ? `<img src="${it.img}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">` : ''}
+                    <span class="truncate flex-1 text-white text-xs font-bold uppercase">${it.name}</span>
+                    <button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2">✕</button>
+                </div>`).join('');
         }
         function loadEdit(id) { const h = window.historial.find(x => x.id === id); items = h.items; editingId = id; window.currentFolio = h.folio; document.getElementById('q-client').value = h.client; document.getElementById('q-date-input').value = h.date; document.getElementById('q-desc').value = h.desc || ""; navTo('edit'); renderPreview(); }
-        function handleImg(i) { if(i.files[0]) { const r = new FileReader(); r.onload = e => { tempImg = e.target.result; renderPreview(); }; r.readAsDataURL(i.files[0]); } }
+        function handleImg(input) {
+            const file = input.files && input.files[0];
+            const status = document.getElementById('img-status');
+            const btn = document.getElementById('img-btn');
+
+            if(!file) return;
+
+            if(!file.type.startsWith('image/')) {
+                alert("El archivo seleccionado no es una imagen.");
+                input.value = "";
+                return;
+            }
+
+            if(status) {
+                status.classList.remove('hidden');
+                status.innerHTML = "Cargando imagen...";
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = e => {
+                const image = new Image();
+
+                image.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const maxSize = 700;
+
+                    let w = image.width;
+                    let h = image.height;
+
+                    if(w > h && w > maxSize) {
+                        h = Math.round(h * maxSize / w);
+                        w = maxSize;
+                    } else if(h > maxSize) {
+                        w = Math.round(w * maxSize / h);
+                        h = maxSize;
+                    }
+
+                    canvas.width = w;
+                    canvas.height = h;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(image, 0, 0, w, h);
+
+                    tempImg = canvas.toDataURL('image/jpeg', 0.78);
+
+                    if(status) {
+                        status.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <img src="${tempImg}" style="width:42px;height:42px;object-fit:cover;border-radius:8px;">
+                                <span>Imagen lista. Ahora presiona “Agregar Ítem”.</span>
+                            </div>`;
+                    }
+
+                    if(btn) btn.innerText = "✅";
+                };
+
+                image.onerror = () => {
+                    tempImg = null;
+                    if(status) status.innerHTML = "No se pudo cargar la imagen.";
+                    if(btn) btn.innerText = "📷";
+                };
+
+                image.src = e.target.result;
+            };
+
+            reader.onerror = () => {
+                tempImg = null;
+                if(status) status.innerHTML = "No se pudo leer la imagen.";
+                if(btn) btn.innerText = "📷";
+            };
+
+            reader.readAsDataURL(file);
+        }; r.readAsDataURL(i.files[0]); } }
         async function saveClient() { const data = { name: document.getElementById('c-name').value.toUpperCase(), phone: document.getElementById('c-phone').value, address: document.getElementById('c-address').value }; if(data.name) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), data); ['c-name', 'c-phone', 'c-address'].forEach(id => document.getElementById(id).value = ''); navTo('edit'); }
         function checkNewClient(el) { if(el.value === "NEW") { navTo('clients'); el.value=""; } else renderPreview(); }
     </script>
