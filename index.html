@@ -159,6 +159,54 @@
             border: none;
             cursor: pointer;
         }
+    
+        /* Zoom táctil interno para preliminares */
+        #preliminar-container {
+            position: relative !important;
+            overflow: hidden !important;
+            touch-action: none !important;
+            height: 72vh;
+            min-height: 460px;
+        }
+
+        #pdf-touch-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: fit-content;
+            transform-origin: 0 0;
+            will-change: transform;
+        }
+
+        #pdf-touch-wrapper #pdf-canvas {
+            zoom: 1 !important;
+            transform: none !important;
+            margin: 0 !important;
+        }
+
+        #qv-body {
+            position: relative !important;
+            overflow: hidden !important;
+            touch-action: none !important;
+            padding: 0 !important;
+        }
+
+        #cloned-pdf-wrapper {
+            position: absolute !important;
+            top: 0;
+            left: 0;
+            width: fit-content;
+            transform-origin: 0 0 !important;
+            will-change: transform;
+            margin: 0 !important;
+        }
+
+        #cloned-pdf-wrapper .pdf-page {
+            zoom: 1 !important;
+            transform: none !important;
+            margin: 0 !important;
+        }
+
     </style>
 </head>
 <body>
@@ -251,6 +299,7 @@
                     </div>
                 </div>
                 </div>
+                </div>
             </div>
         </div>
     </div>
@@ -273,6 +322,7 @@
     <script>
         let items = [], tempImg = null, editingId = null;
         document.getElementById('q-date-input').valueAsDate = new Date();
+        window.addEventListener('load', () => initCotizadorTouchZoom(true));
         window.addEventListener('load', () => initCotizadorZoom(true));
 
         function navTo(sec) {
@@ -448,6 +498,147 @@
 
         // --- LUPA: FIX HOJA EN BLANCO ---
 
+
+        // --- ZOOM INTERNO SOLO EN PRELIMINARES ---
+        const touchZoomState = {};
+
+        function tzDist(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
+        }
+
+        function tzCenter(touches) {
+            return {
+                x: (touches[0].clientX + touches[1].clientX) / 2,
+                y: (touches[0].clientY + touches[1].clientY) / 2
+            };
+        }
+
+        function tzApply(contentId) {
+            const el = document.getElementById(contentId);
+            const st = touchZoomState[contentId];
+            if(!el || !st) return;
+            el.style.transform = `translate3d(${st.x}px, ${st.y}px, 0) scale(${st.scale})`;
+        }
+
+        function tzFit(containerId, contentId) {
+            const box = document.getElementById(containerId);
+            const content = document.getElementById(contentId);
+            if(!box || !content) return;
+
+            const page = content.querySelector('.pdf-page') || content;
+            const bw = box.clientWidth;
+            const bh = box.clientHeight;
+            const pw = page.offsetWidth;
+            const ph = page.offsetHeight;
+
+            if(!bw || !bh || !pw || !ph) {
+                setTimeout(() => tzFit(containerId, contentId), 150);
+                return;
+            }
+
+            const pad = 14;
+            const fit = Math.min((bw - pad * 2) / pw, (bh - pad * 2) / ph);
+            const scale = Math.max(0.15, Math.min(1, fit));
+
+            touchZoomState[contentId] = {
+                scale,
+                minScale: scale,
+                maxScale: 4,
+                x: (bw - pw * scale) / 2,
+                y: Math.max(8, (bh - ph * scale) / 2),
+                dragging: false,
+                startX: 0,
+                startY: 0,
+                startDist: 0,
+                startScale: scale,
+                pinchX: 0,
+                pinchY: 0,
+                pinchStartX: 0,
+                pinchStartY: 0
+            };
+
+            tzApply(contentId);
+        }
+
+        function tzSetup(containerId, contentId) {
+            const box = document.getElementById(containerId);
+            if(!box || box.dataset.tzReady === "1") return;
+
+            box.dataset.tzReady = "1";
+
+            box.addEventListener('touchstart', (e) => {
+                const st = touchZoomState[contentId];
+                if(!st) return;
+
+                if(e.touches.length === 1) {
+                    e.preventDefault();
+                    st.dragging = true;
+                    st.startX = e.touches[0].clientX - st.x;
+                    st.startY = e.touches[0].clientY - st.y;
+                }
+
+                if(e.touches.length === 2) {
+                    e.preventDefault();
+                    st.dragging = false;
+                    st.startDist = tzDist(e.touches);
+                    st.startScale = st.scale;
+                    const c = tzCenter(e.touches);
+                    st.pinchX = c.x;
+                    st.pinchY = c.y;
+                    st.pinchStartX = st.x;
+                    st.pinchStartY = st.y;
+                }
+            }, { passive: false });
+
+            box.addEventListener('touchmove', (e) => {
+                const st = touchZoomState[contentId];
+                if(!st) return;
+                e.preventDefault();
+
+                if(e.touches.length === 1 && st.dragging) {
+                    st.x = e.touches[0].clientX - st.startX;
+                    st.y = e.touches[0].clientY - st.startY;
+                    tzApply(contentId);
+                }
+
+                if(e.touches.length === 2 && st.startDist > 0) {
+                    const current = tzDist(e.touches);
+                    const nextScale = Math.min(st.maxScale, Math.max(st.minScale, st.startScale * (current / st.startDist)));
+                    const ratio = nextScale / st.startScale;
+                    const c = tzCenter(e.touches);
+
+                    st.scale = nextScale;
+                    st.x = c.x - (st.pinchX - st.pinchStartX) * ratio;
+                    st.y = c.y - (st.pinchY - st.pinchStartY) * ratio;
+                    tzApply(contentId);
+                }
+            }, { passive: false });
+
+            box.addEventListener('touchend', (e) => {
+                const st = touchZoomState[contentId];
+                if(!st) return;
+                if(e.touches.length === 0) {
+                    st.dragging = false;
+                    st.startDist = 0;
+                }
+            }, { passive: false });
+        }
+
+        function initCotizadorTouchZoom(force = false) {
+            tzSetup('preliminar-container', 'pdf-touch-wrapper');
+            if(force || !touchZoomState['pdf-touch-wrapper']) {
+                setTimeout(() => tzFit('preliminar-container', 'pdf-touch-wrapper'), 120);
+            }
+        }
+
+        function initLupaTouchZoom() {
+            delete touchZoomState['cloned-pdf-wrapper'];
+            tzSetup('qv-body', 'cloned-pdf-wrapper');
+            setTimeout(() => tzFit('qv-body', 'cloned-pdf-wrapper'), 120);
+        }
+
         function escapeHtmlSafe(value) {
             return String(value ?? "")
                 .replace(/&/g, "&amp;")
@@ -550,6 +741,7 @@
 
             modal.style.display = "flex";
             document.body.style.overflow = "hidden";
+            initLupaTouchZoom();
         }
 
         function closeQuickView() {
