@@ -214,7 +214,7 @@
     <nav class="flex bg-slate-950 border-b border-slate-800 sticky top-0 z-[100]">
         <button onclick="navTo('edit')" id="m-edit" class="flex-1 p-4 font-black text-[11px] uppercase text-blue-500 border-b-2 border-blue-500">Cotizador</button>
         <button onclick="navTo('hist')" id="m-hist" class="flex-1 p-4 font-black text-[11px] uppercase text-slate-500 border-b-2 border-transparent">Historial</button>
-        <button onclick="navTo('clients')" id="m-clients" class="flex-1 p-4 font-black text-[11px] uppercase text-slate-500 border-b-2 border-transparent">Clientes</button>
+        <button onclick="navTo('clients')" id="m-clients" class="flex-1 p-4 font-black text-[11px] uppercase text-slate-500 border-b-2 border-transparent">En atención as</button>
     </nav>
 
     <div id="quick-view-modal">
@@ -266,7 +266,7 @@
                         </div>
                         <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:30px; display:flex; justify-content:space-between;">
                             <div style="width: 65%;">
-                                <p style="font-size: 8px; color: #64748b; font-weight: 900; text-transform: uppercase; margin:0;">Cliente:</p>
+                                <p style="font-size: 8px; color: #64748b; font-weight: 900; text-transform: uppercase; margin:0;">En atención a:</p>
                                 <b id="p-client" style="font-size: 16px; text-transform: uppercase; color: #0f172a;">---</b>
                                 <p id="p-address-val" style="font-size: 11px; margin: 5px 0 0; color: #475569;"></p>
                             </div>
@@ -314,7 +314,7 @@
             <input type="text" id="c-name" placeholder="Nombre Empresa" class="input-dark">
             <input type="text" id="c-phone" placeholder="WhatsApp" class="input-dark">
             <input type="text" id="c-address" placeholder="Dirección" class="input-dark">
-            <button onclick="saveClient()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase">Guardar Cliente</button>
+            <button onclick="saveClient()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase">Guardar En atención a</button>
         </div>
         <div id="clients-list" class="space-y-4 max-w-md mx-auto"></div>
     </div>
@@ -712,7 +712,7 @@
 
                         <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:30px; display:flex; justify-content:space-between;">
                             <div style="width:65%;">
-                                <p style="font-size:8px; color:#64748b; font-weight:900; text-transform:uppercase; margin:0;">Cliente:</p>
+                                <p style="font-size:8px; color:#64748b; font-weight:900; text-transform:uppercase; margin:0;">En atención a:</p>
                                 <b style="font-size:16px; text-transform:uppercase; color:#0f172a;">${escapeHtmlSafe(h.client || '---')}</b>
                             </div>
                             <div style="width:30%; text-align:right; border-left:2px solid #e2e8f0; padding-left:15px;">
@@ -867,7 +867,7 @@
                         pdf.setFontSize(7);
                         pdf.setFont(undefined, 'bold');
                         pdf.setTextColor(100, 116, 139);
-                        pdf.text("CLIENTE:", m + 4, y + 7);
+                        pdf.text("EN ATENCIÓN A:", m + 4, y + 7);
 
                         pdf.setFontSize(11);
                         pdf.setTextColor(15, 23, 42);
