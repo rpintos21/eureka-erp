@@ -997,27 +997,27 @@
                     const webIconX = footerStartX + (itemGap * 2) + 22;
                     const telIconX = footerStartX + (itemGap * 3) + 26;
 
-                    // Ícono ubicación
-                    pdf.circle(locX + 1.8, footerY - 1.6, 1.15, 'S');
-                    pdf.circle(locX + 1.8, footerY - 1.6, 0.32, 'F');
-                    pdf.line(locX + 1.8, footerY - 0.45, locX + 1.8, footerY + 0.35);
+                    // Ícono ubicación — centrado visualmente con el texto
+                    pdf.circle(locX + 1.8, footerY - 0.65, 1.15, 'S');
+                    pdf.circle(locX + 1.8, footerY - 0.65, 0.32, 'F');
+                    pdf.line(locX + 1.8, footerY + 0.5, locX + 1.8, footerY + 1.3);
                     pdf.text("Manuel Rodríguez 723, Isla de Maipo", locX + textOffset, footerY);
 
-                    // Ícono correo
-                    pdf.rect(mailX + 0.2, footerY - 3.2, 3.2, 2.2, 'S');
-                    pdf.line(mailX + 0.2, footerY - 3.2, mailX + 1.8, footerY - 1.9);
-                    pdf.line(mailX + 3.4, footerY - 3.2, mailX + 1.8, footerY - 1.9);
+                    // Ícono correo — centrado visualmente con el texto
+                    pdf.rect(mailX + 0.2, footerY - 1.75, 3.2, 2.2, 'S');
+                    pdf.line(mailX + 0.2, footerY - 1.75, mailX + 1.8, footerY - 0.45);
+                    pdf.line(mailX + 3.4, footerY - 1.75, mailX + 1.8, footerY - 0.45);
                     pdf.text("contacto@eurekalaboratorio.cl", mailX + textOffset, footerY);
 
-                    // Ícono web
-                    pdf.circle(webIconX + 1.8, footerY - 1.7, 1.5, 'S');
-                    pdf.line(webIconX + 0.35, footerY - 1.7, webIconX + 3.25, footerY - 1.7);
-                    pdf.line(webIconX + 1.8, footerY - 3.2, webIconX + 1.8, footerY - 0.2);
+                    // Ícono web — centrado visualmente con el texto
+                    pdf.circle(webIconX + 1.8, footerY - 0.65, 1.5, 'S');
+                    pdf.line(webIconX + 0.35, footerY - 0.65, webIconX + 3.25, footerY - 0.65);
+                    pdf.line(webIconX + 1.8, footerY - 2.15, webIconX + 1.8, footerY + 0.85);
                     pdf.text("www.eurekalaboratorio.cl", webIconX + textOffset, footerY);
 
-                    // Ícono teléfono
-                    pdf.roundedRect(telIconX + 0.6, footerY - 3.35, 2.5, 3.1, 0.5, 0.5, 'S');
-                    pdf.circle(telIconX + 1.85, footerY - 0.75, 0.18, 'F');
+                    // Ícono teléfono — centrado visualmente con el texto
+                    pdf.roundedRect(telIconX + 0.6, footerY - 2.15, 2.5, 3.1, 0.5, 0.5, 'S');
+                    pdf.circle(telIconX + 1.85, footerY + 0.45, 0.18, 'F');
                     pdf.text("+56 9 8827 7250", telIconX + textOffset, footerY);
                 }
 
