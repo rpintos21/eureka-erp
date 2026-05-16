@@ -292,9 +292,14 @@
                                 <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:11px; font-weight:900; color:#3b82f6;">TOTAL</span><h2 id="p-total" style="font-size:30px; font-weight:900; color:#0f172a; margin:0;"></h2></div>
                             </div>
                         </div>
-                        <div style="border-top: 3px solid #0f172a; padding-top: 20px; font-size: 11px; color: #475569; display: flex; justify-content: space-between; align-items: center;">
-                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Manuel Rodríguez 723, Isla de Maipo<br>📧 contacto@eurekalaboratorio.cl</div>
-                            <div style="text-align: right;">🌐 www.eurekalaboratorio.cl<br>📞 +56 9 8827 7250</div>
+                        <div style="border-top: 3px solid #0f172a; padding-top: 18px; font-size: 10px; color: #475569; text-align: center;">
+                            <div style="font-size: 11px; font-weight: 900; color:#0f172a; margin-bottom: 8px;">LABORATORIO CREATIVO EUREKA SPA</div>
+                            <div style="display:flex; justify-content:center; align-items:center; gap: 14px; flex-wrap: nowrap; white-space: nowrap;">
+                                <span>📍 Manuel Rodríguez 723, Isla de Maipo</span>
+                                <span>📧 contacto@eurekalaboratorio.cl</span>
+                                <span>🌐 www.eurekalaboratorio.cl</span>
+                                <span>📞 +56 9 8827 7250</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -746,9 +751,14 @@
                                 <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:11px; font-weight:900; color:#3b82f6;">TOTAL</span><h2 style="font-size:30px; font-weight:900; color:#0f172a; margin:0;">${formatCLP(total)}</h2></div>
                             </div>
                         </div>
-                        <div style="border-top:3px solid #0f172a; padding-top:20px; font-size:11px; color:#475569; display:flex; justify-content:space-between; align-items:center;">
-                            <div><b style="color:#0f172a;">LABORATORIO CREATIVO EUREKA SPA</b><br>📍 Manuel Rodríguez 723, Isla de Maipo<br>📧 contacto@eurekalaboratorio.cl</div>
-                            <div style="text-align:right;">🌐 www.eurekalaboratorio.cl<br>📞 +56 9 8827 7250</div>
+                        <div style="border-top:3px solid #0f172a; padding-top:18px; font-size:10px; color:#475569; text-align:center;">
+                            <div style="font-size:11px; font-weight:900; color:#0f172a; margin-bottom:8px;">LABORATORIO CREATIVO EUREKA SPA</div>
+                            <div style="display:flex; justify-content:center; align-items:center; gap:14px; flex-wrap:nowrap; white-space:nowrap;">
+                                <span>📍 Manuel Rodríguez 723, Isla de Maipo</span>
+                                <span>📧 contacto@eurekalaboratorio.cl</span>
+                                <span>🌐 www.eurekalaboratorio.cl</span>
+                                <span>📞 +56 9 8827 7250</span>
+                            </div>
                         </div>
                     </div>
                 </div>`;
@@ -961,44 +971,54 @@
                     pdf.line(m, y, pageW - m, y);
                     y += 7;
 
-                    pdf.setFontSize(7);
+                    pdf.setFontSize(8);
                     pdf.setFont(undefined, 'bold');
                     pdf.setTextColor(15, 23, 42);
-                    pdf.text("LABORATORIO CREATIVO EUREKA SPA", m, y);
+                    pdf.text("LABORATORIO CREATIVO EUREKA SPA", pageW / 2, y, { align: 'center' });
 
+                    y += 7;
+
+                    pdf.setFontSize(6.6);
                     pdf.setFont(undefined, 'normal');
                     pdf.setTextColor(71, 85, 105);
 
                     pdf.setDrawColor(59, 130, 246);
                     pdf.setFillColor(59, 130, 246);
-                    pdf.setLineWidth(0.35);
+                    pdf.setLineWidth(0.3);
+
+                    const footerY = y;
+                    const footerCenter = pageW / 2;
+                    const footerStartX = 23;
+                    const itemGap = 43;
+                    const textOffset = 5;
+
+                    const locX = footerStartX;
+                    const mailX = footerStartX + itemGap + 10;
+                    const webIconX = footerStartX + (itemGap * 2) + 22;
+                    const telIconX = footerStartX + (itemGap * 3) + 26;
 
                     // Ícono ubicación
-                    pdf.circle(m + 1.8, y + 3.4, 1.15, 'S');
-                    pdf.circle(m + 1.8, y + 3.4, 0.32, 'F');
-                    pdf.line(m + 1.8, y + 4.55, m + 1.8, y + 5.35);
+                    pdf.circle(locX + 1.8, footerY - 1.6, 1.15, 'S');
+                    pdf.circle(locX + 1.8, footerY - 1.6, 0.32, 'F');
+                    pdf.line(locX + 1.8, footerY - 0.45, locX + 1.8, footerY + 0.35);
+                    pdf.text("Manuel Rodríguez 723, Isla de Maipo", locX + textOffset, footerY);
 
                     // Ícono correo
-                    pdf.rect(m + 0.2, y + 7.4, 3.2, 2.2, 'S');
-                    pdf.line(m + 0.2, y + 7.4, m + 1.8, y + 8.7);
-                    pdf.line(m + 3.4, y + 7.4, m + 1.8, y + 8.7);
+                    pdf.rect(mailX + 0.2, footerY - 3.2, 3.2, 2.2, 'S');
+                    pdf.line(mailX + 0.2, footerY - 3.2, mailX + 1.8, footerY - 1.9);
+                    pdf.line(mailX + 3.4, footerY - 3.2, mailX + 1.8, footerY - 1.9);
+                    pdf.text("contacto@eurekalaboratorio.cl", mailX + textOffset, footerY);
 
                     // Ícono web
-                    const webIconX = pageW - m - 68;
-                    pdf.circle(webIconX + 1.8, y + 3.6, 1.5, 'S');
-                    pdf.line(webIconX + 0.35, y + 3.6, webIconX + 3.25, y + 3.6);
-                    pdf.line(webIconX + 1.8, y + 2.1, webIconX + 1.8, y + 5.1);
+                    pdf.circle(webIconX + 1.8, footerY - 1.7, 1.5, 'S');
+                    pdf.line(webIconX + 0.35, footerY - 1.7, webIconX + 3.25, footerY - 1.7);
+                    pdf.line(webIconX + 1.8, footerY - 3.2, webIconX + 1.8, footerY - 0.2);
+                    pdf.text("www.eurekalaboratorio.cl", webIconX + textOffset, footerY);
 
                     // Ícono teléfono
-                    const telIconX = pageW - m - 68;
-                    pdf.roundedRect(telIconX + 0.6, y + 7.25, 2.5, 3.1, 0.5, 0.5, 'S');
-                    pdf.circle(telIconX + 1.85, y + 9.85, 0.18, 'F');
-
-                    pdf.setTextColor(71, 85, 105);
-                    pdf.text("Manuel Rodríguez 723, Isla de Maipo", m + 6, y + 5);
-                    pdf.text("contacto@eurekalaboratorio.cl", m + 6, y + 10);
-                    pdf.text("www.eurekalaboratorio.cl", webIconX + 6, y + 5);
-                    pdf.text("+56 9 8827 7250", telIconX + 6, y + 10);
+                    pdf.roundedRect(telIconX + 0.6, footerY - 3.35, 2.5, 3.1, 0.5, 0.5, 'S');
+                    pdf.circle(telIconX + 1.85, footerY - 0.75, 0.18, 'F');
+                    pdf.text("+56 9 8827 7250", telIconX + textOffset, footerY);
                 }
 
                 function drawItemRow(it) {
