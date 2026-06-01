@@ -2,53 +2,1183 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Eureka! ERP</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Eureka! ERP v82</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCtlfBJ0QHOMhEDPRAXHL9nRFswnr49rik",
+            authDomain: "registro-de-gastos-a21e8.firebaseapp.com",
+            projectId: "registro-de-gastos-a21e8",
+            storageBucket: "registro-de-gastos-a21e8.firebasestorage.app",
+            messagingSenderId: "947355933583",
+            appId: "1:947355933583:web:0231b493d8b794cc3b49fa"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        window.fb = { db, doc, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction };
+
+        onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
+            window.nextFolio = (d.exists()) ? Number(d.data().lastFolio) : 1000;
+            renderPreview();
+        });
+
+        onSnapshot(collection(db, "erp_clientes"), (s) => {
+            window.clientes = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.name.localeCompare(b.name));
+            updateUI();
+        });
+
+        onSnapshot(collection(db, "erp_cotizaciones"), (s) => {
+            window.historial = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => b.folio - a.folio);
+            renderHistory();
+        });
+    </script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #020617; color: #f1f5f9; margin: 0; overflow-x: hidden; }
+        .input-dark { background: #1e293b; border: 1px solid #334155; padding: 14px; border-radius: 12px; width: 100%; color: white; outline: none; font-size: 16px; box-sizing: border-box; }
+        .tab-content { display: none; width: 100%; padding: 20px; box-sizing: border-box; }
+        .tab-content.active { display: block; }
+
+        .pdf-page { 
+            background: white !important; 
+            color: #1e293b !important; 
+            width: 210mm; 
+            min-height: 297mm; 
+            padding: 15mm; 
+            display: flex; 
+            flex-direction: column; 
+            box-sizing: border-box;
+            margin: 0 auto;
+        }
+
+        #preliminar-container {
+            width: 100%;
+            height: 72vh;
+            min-height: 460px;
+            overflow: hidden !important;
+            padding: 0;
+            background: #020617;
+            position: relative !important;
+            -webkit-overflow-scrolling: touch;
+            touch-action: none !important;
+            border-radius: 18px;
+        }
+
+        #pdf-preview-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: fit-content;
+            transform-origin: 0 0;
+            will-change: transform;
+        }
+
+        #pdf-canvas {
+            zoom: 1 !important;
+            transform: none !important;
+            margin: 0 !important;
+        }
+
+        @media (max-width: 1024px) {
+            #preliminar-container {
+                height: 68vh;
+                min-height: 460px;
+            }
+        }
+
+        #quick-view-modal {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #020617;
+            z-index: 99999;
+            display: none;
+            flex-direction: column;
+        }
+
+        #qv-header {
+            background: #0f172a;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1e293b;
+            flex-shrink: 0;
+        }
+
+        #qv-body {
+            flex: 1;
+            overflow: hidden !important;
+            padding: 0 !important;
+            -webkit-overflow-scrolling: touch;
+            background: #020617;
+            position: relative !important;
+            touch-action: none !important;
+        }
+
+        #cloned-pdf-wrapper {
+            position: absolute !important;
+            top: 0;
+            left: 0;
+            width: fit-content;
+            margin: 0 !important;
+            transform-origin: 0 0 !important;
+            will-change: transform;
+        }
+
+        #cloned-pdf-wrapper .pdf-page {
+            zoom: 1 !important;
+            transform: none !important;
+            margin: 0 !important;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+
+        .icon-btn {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            background: #1e293b;
+            font-size: 20px;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
 
-    <table style="width:100%; border-collapse:collapse;">
-        <thead>
-            <tr style="background:#0f172a; color:white; font-size:10px; text-transform:uppercase;">
-                <th style="padding:12px 10px; width:50px;">Cant</th>
-                <th style="padding:12px 10px; text-align:left;">Descripción</th>
-                <th style="padding:12px 10px; width:80px; text-align:center;">P. Unit</th>
-                <th style="padding:12px 10px; width:100px; text-align:center;">Imagen</th>
-                <th style="padding:12px 10px; text-align:right; width:100px;">Total</th>
-            </tr>
-        </thead>
-        <tbody id="p-body"></tbody>
-    </table>
+    <nav class="flex bg-slate-950 border-b border-slate-800 sticky top-0 z-[100]">
+        <button onclick="navTo('edit')" id="m-edit" class="flex-1 p-4 font-black text-[11px] uppercase text-blue-500 border-b-2 border-blue-500">Cotizador</button>
+        <button onclick="navTo('hist')" id="m-hist" class="flex-1 p-4 font-black text-[11px] uppercase text-slate-500 border-b-2 border-transparent">Historial</button>
+        <button onclick="navTo('clients')" id="m-clients" class="flex-1 p-4 font-black text-[11px] uppercase text-slate-500 border-b-2 border-transparent">Clientes</button>
+    </nav>
+
+    <div id="quick-view-modal">
+        <div id="qv-header">
+            <button onclick="closeQuickView()" class="text-white text-xl font-bold bg-slate-800 px-4 py-2 rounded-lg">CERRAR</button>
+            <div class="flex gap-4">
+                <button id="qv-share-btn" class="icon-btn text-emerald-400">🔗</button>
+                <button id="qv-download-btn" class="icon-btn text-blue-400">⬇️</button>
+            </div>
+        </div>
+        <div id="qv-body">
+            <div id="cloned-pdf-wrapper"></div>
+        </div>
+    </div>
+
+    <div id="sec-edit" class="tab-content active">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+            <div class="lg:w-[400px] space-y-4">
+                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 space-y-3">
+                    <input type="date" id="q-date-input" class="input-dark">
+                    <select id="q-client" class="input-dark" onchange="checkNewClient(this)"></select>
+                    <input type="text" id="q-desc" placeholder="Referencia del proyecto..." class="input-dark" oninput="renderPreview()">
+                </div>
+
+                <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 shadow-2xl">
+                    <textarea id="i-name" placeholder="Descripción..." class="input-dark h-24 text-sm resize-none"></textarea>
+                    <div class="flex gap-3">
+                        <input type="number" id="i-qty" value="1" class="input-dark text-center w-20">
+                        <input type="number" id="i-price" placeholder="$ Precio" class="input-dark flex-1">
+                        <label for="f-img" id="img-btn" class="bg-slate-700 px-4 rounded-xl flex items-center justify-center cursor-pointer min-w-[54px]">📷</label>
+                    </div>
+                    <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
+                    <div id="img-status" class="hidden bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-emerald-300 font-bold"></div>
+                    <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase">Agregar Ítem</button>
+                </div>
+
+                <div id="items-list" class="space-y-2"></div>
+                <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-6 rounded-2xl font-black text-lg uppercase shadow-2xl">Guardar y Enviar PDF</button>
+            </div>
+
+            <div id="preliminar-container">
+                <div id="pdf-preview-wrapper">
+                    <div id="pdf-canvas" class="pdf-page">
+                        <div style="flex: 1;">
+                            <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 4px solid #0f172a; padding-bottom: 15px;">
+                                <img src="logo.png" style="height:70px; width:auto; object-fit:contain; display:block;">
+                                <div style="text-align:right;">
+                                    <h2 id="p-folio" style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-1000</h2>
+                                    <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b id="p-date" style="color:#0f172a"></b></p>
+                                </div>
+                            </div>
+
+                            <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:30px; display:flex; justify-content:space-between;">
+                                <div style="width: 65%;">
+                                    <p style="font-size: 8px; color: #64748b; font-weight: 900; text-transform: uppercase; margin:0;">En atención a:</p>
+                                    <b id="p-client" style="font-size: 16px; text-transform: uppercase; color: #0f172a;">---</b>
+                                    <p id="p-address-val" style="font-size: 11px; margin: 5px 0 0; color: #475569;"></p>
+                                </div>
+                                <div style="width: 30%; text-align: right; border-left: 2px solid #e2e8f0; padding-left: 15px;">
+                                    <p style="font-size: 8px; color: #64748b; font-weight: 900; text-transform: uppercase; margin:0;">Contacto:</p>
+                                    <p id="p-contact-val" style="font-size: 11px; color: #0f172a; font-weight: 600;"></p>
+                                </div>
+                            </div>
+
+                            <table style="width:100%; border-collapse:collapse;">
+                                <thead>
+                                    <tr style="background:#0f172a; color:white; font-size:10px; text-transform:uppercase;">
+                                        <th style="padding:12px 8px; width:45px;">Cant</th>
+                                        <th style="padding:12px 8px; text-align:left;">Descripción</th>
+                                        <th style="padding:12px 8px; width:110px; text-align:center;">Imagen Ref.</th>
+                                        <th style="padding:12px 8px; width:90px; text-align:right;">P. Unit.</th>
+                                        <th style="padding:12px 8px; width:100px; text-align:right;">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="p-body"></tbody>
+                            </table>
+                        </div>
+
+                        <div style="margin-top: 50px; border-top: 1px solid #eee; padding-top: 25px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px;">
+                                <div style="width: 330px; background: #f0f9ff; border: 1px solid #bae6fd; padding: 15px; border-radius: 12px;">
+                                    <b style="font-size: 9px; color: #0369a1;">PAGO POR TRANSFERENCIA</b>
+                                    <div style="font-size: 11px; color: #0c4a6e; line-height: 1.6; margin-top: 8px;"><b>Banco Estado</b> | Vista<br><b>N°:</b> 37370574546 | <b>RUT:</b> 76.823.326-8<br><b>LABORATORIO CREATIVO EUREKA SPA</b></div>
+                                </div>
+                                <div style="width: 240px; text-align: right;">
+                                    <div style="display:flex; justify-content:space-between; font-size: 13px;"><span>Neto:</span><b id="p-sub"></b></div>
+                                    <div style="display:flex; justify-content:space-between; font-size: 13px; margin-bottom: 10px; border-bottom: 2px solid #ddd; padding-bottom: 5px;"><span>IVA:</span><b id="p-iva"></b></div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:11px; font-weight:900; color:#3b82f6;">TOTAL</span><h2 id="p-total" style="font-size:30px; font-weight:900; color:#0f172a; margin:0;"></h2></div>
+                                </div>
+                            </div>
+
+                            <div style="border-top: 3px solid #0f172a; padding-top: 18px; font-size: 10px; color: #475569; text-align: center;">
+                                <div style="font-size: 11px; font-weight: 900; color:#0f172a; margin-bottom: 8px;">LABORATORIO CREATIVO EUREKA SPA</div>
+                                <div style="display:flex; justify-content:center; align-items:center; gap: 14px; flex-wrap: nowrap; white-space: nowrap;">
+                                    <span>📍 Manuel Rodríguez 723, Isla de Maipo</span>
+                                    <span>📧 contacto@eurekalaboratorio.cl</span>
+                                    <span>🌐 www.eurekalaboratorio.cl</span>
+                                    <span>📞 +56 9 8827 7250</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="sec-hist" class="tab-content">
+            <input type="text" id="search-hist" placeholder="🔍 Buscar..." class="input-dark mb-6" oninput="renderHistory()">
+            <div id="history-content" class="space-y-4 max-w-2xl mx-auto"></div>
+        </div>
+
+        <div id="sec-clients" class="tab-content">
+            <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 mb-8 max-w-md mx-auto">
+                <input type="text" id="c-name" placeholder="Nombre Empresa" class="input-dark">
+                <input type="text" id="c-phone" placeholder="WhatsApp" class="input-dark">
+                <input type="text" id="c-address" placeholder="Dirección" class="input-dark">
+                <button onclick="saveClient()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase">Guardar En atención a</button>
+            </div>
+            <div id="clients-list" class="space-y-4 max-w-md mx-auto"></div>
+        </div>
+    </div>
 
     <script>
-        // 1. DENTRO DE TU FUNCIÓN renderPreview(), REEMPLAZA EL MAP POR ESTO:
-        document.getElementById('p-body').innerHTML = items.map(it => `<tr>
-            <td style="padding:15px 10px; text-align:center; font-weight:700;">${it.qty}</td>
-            <td style="padding:15px 10px; font-size:13px;">${it.name}</td>
-            <td style="padding:15px 10px; text-align:center;">${formatCLP(it.price)}</td>
-            <td style="padding:15px 10px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height: 30mm; max-width: 35mm; object-fit: contain;">` : ''}</td>
-            <td style="padding:15px 10px; text-align:right; font-weight:800;">${formatCLP(it.total)}</td>
-        </tr>`).join('');
+        let items = [], tempImg = null, editingId = null;
+        document.getElementById('q-date-input').valueAsDate = new Date();
+        window.addEventListener('load', () => initCotizadorZoom(true));
 
-        // 2. DENTRO DE generateAndSharePDF, EN drawTableHeader():
-        function drawTableHeader() {
-            // ... (tu código original)
-            pdf.text("CANT", m + 4, y + 6);
-            pdf.text("DESCRIPCIÓN", m + 22, y + 6);
-            pdf.text("P. UNIT", m + 105, y + 6); // Nueva columna
-            pdf.text("IMAGEN", m + 125, y + 6);
-            pdf.text("TOTAL", pageW - m - 3, y + 6, { align: 'right' });
-            y += 9;
+        function navTo(sec) {
+            closeQuickView();
+            ['edit', 'hist', 'clients'].forEach(s => {
+                document.getElementById('sec-'+s).classList.toggle('active', s === sec);
+                const btn = document.getElementById('m-'+s);
+                btn.classList.toggle('text-blue-500', s === sec);
+                btn.classList.toggle('border-blue-500', s === sec);
+                btn.classList.toggle('text-slate-500', s !== sec);
+                btn.classList.toggle('border-transparent', s !== sec);
+            });
+            window.scrollTo(0,0);
         }
 
-        // 3. DENTRO DE generateAndSharePDF, EN drawItemRow(it):
-        function drawItemRow(it) {
-            // ... (donde tienes tus otros textos)
-            pdf.text(money(it.price), m + 105, y + 8); // Coordenada para el precio
-            // ... (resto de tu código original)
+        const internalZoom = {};
+
+        function distTouches(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
         }
+
+        function centerTouches(touches) {
+            return {
+                x: (touches[0].clientX + touches[1].clientX) / 2,
+                y: (touches[0].clientY + touches[1].clientY) / 2
+            };
+        }
+
+        function applyInternalZoom(contentId) {
+            const content = document.getElementById(contentId);
+            const st = internalZoom[contentId];
+            if (!content || !st) return;
+            content.style.transform = `translate3d(${st.x}px, ${st.y}px, 0) scale(${st.scale})`;
+        }
+
+        function fitInternalZoom(containerId, contentId) {
+            const container = document.getElementById(containerId);
+            const content = document.getElementById(contentId);
+            if (!container || !content) return;
+
+            const page = content.querySelector('.pdf-page') || content;
+            const cw = container.clientWidth;
+            const ch = container.clientHeight;
+            const pw = page.offsetWidth;
+            const ph = page.offsetHeight;
+
+            if (!cw || !ch || !pw || !ph) {
+                setTimeout(() => fitInternalZoom(containerId, contentId), 150);
+                return;
+            }
+
+            const pad = 16;
+            const fit = Math.min((cw - pad * 2) / pw, (ch - pad * 2) / ph);
+            const scale = Math.max(0.12, Math.min(1, fit));
+
+            internalZoom[contentId] = {
+                scale,
+                minScale: scale,
+                maxScale: 4,
+                x: (cw - pw * scale) / 2,
+                y: Math.max(8, (ch - ph * scale) / 2),
+                dragging: false,
+                startX: 0,
+                startY: 0,
+                startDist: 0,
+                startScale: scale,
+                pinchStartX: 0,
+                pinchStartY: 0,
+                pinchCenterX: 0,
+                pinchCenterY: 0
+            };
+
+            applyInternalZoom(contentId);
+        }
+
+        function setupInternalZoom(containerId, contentId) {
+            const container = document.getElementById(containerId);
+            if (!container || container.dataset.internalZoomReady === "1") return;
+
+            container.dataset.internalZoomReady = "1";
+
+            container.addEventListener('touchstart', function(e) {
+                const st = internalZoom[contentId];
+                if (!st) return;
+
+                if (e.touches.length === 1) {
+                    e.preventDefault();
+                    st.dragging = true;
+                    st.startX = e.touches[0].clientX - st.x;
+                    st.startY = e.touches[0].clientY - st.y;
+                }
+
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    st.dragging = false;
+                    st.startDist = distTouches(e.touches);
+                    st.startScale = st.scale;
+
+                    const c = centerTouches(e.touches);
+                    st.pinchCenterX = c.x;
+                    st.pinchCenterY = c.y;
+                    st.pinchStartX = st.x;
+                    st.pinchStartY = st.y;
+                }
+            }, { passive: false });
+
+            container.addEventListener('touchmove', function(e) {
+                const st = internalZoom[contentId];
+                if (!st) return;
+                e.preventDefault();
+
+                if (e.touches.length === 1 && st.dragging) {
+                    st.x = e.touches[0].clientX - st.startX;
+                    st.y = e.touches[0].clientY - st.startY;
+                    applyInternalZoom(contentId);
+                }
+
+                if (e.touches.length === 2 && st.startDist > 0) {
+                    const newDist = distTouches(e.touches);
+                    const rawScale = st.startScale * (newDist / st.startDist);
+                    const newScale = Math.min(st.maxScale, Math.max(st.minScale, rawScale));
+                    const ratio = newScale / st.startScale;
+
+                    const c = centerTouches(e.touches);
+                    st.scale = newScale;
+                    st.x = c.x - (st.pinchCenterX - st.pinchStartX) * ratio;
+                    st.y = c.y - (st.pinchCenterY - st.pinchStartY) * ratio;
+
+                    applyInternalZoom(contentId);
+                }
+            }, { passive: false });
+
+            container.addEventListener('touchend', function(e) {
+                const st = internalZoom[contentId];
+                if (!st) return;
+                if (e.touches.length === 0) {
+                    st.dragging = false;
+                    st.startDist = 0;
+                }
+            }, { passive: false });
+
+            container.addEventListener('dblclick', function(e) {
+                const st = internalZoom[contentId];
+                if (!st) return;
+                e.preventDefault();
+
+                if (st.scale <= st.minScale + 0.03) {
+                    st.scale = Math.min(2, st.maxScale);
+                    st.x = 20;
+                    st.y = 20;
+                    applyInternalZoom(contentId);
+                } else {
+                    fitInternalZoom(containerId, contentId);
+                }
+            });
+        }
+
+        function initCotizadorZoom(force = false) {
+            setupInternalZoom('preliminar-container', 'pdf-preview-wrapper');
+            if (force || !internalZoom['pdf-preview-wrapper']) {
+                setTimeout(() => fitInternalZoom('preliminar-container', 'pdf-preview-wrapper'), 120);
+            }
+        }
+
+        function initHistorialZoom() {
+            delete internalZoom['cloned-pdf-wrapper'];
+            setupInternalZoom('qv-body', 'cloned-pdf-wrapper');
+            setTimeout(() => fitInternalZoom('qv-body', 'cloned-pdf-wrapper'), 180);
+        }
+
+        function loadLogoForPDF() {
+            return new Promise(resolve => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.naturalWidth || img.width;
+                        canvas.height = img.naturalHeight || img.height;
+
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+
+                        resolve({
+                            data: canvas.toDataURL('image/png'),
+                            width: canvas.width,
+                            height: canvas.height
+                        });
+                    } catch(e) {
+                        resolve(null);
+                    }
+                };
+
+                img.onerror = () => resolve(null);
+                img.src = "logo.png";
+            });
+        }
+
+        function escapeHtmlSafe(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function formatCLP(value) {
+            return "$" + Number(value || 0).toLocaleString('es-CL');
+        }
+
+        function buildQuotePreviewHTML(h) {
+            const quoteItems = h.items || [];
+            const neto = quoteItems.reduce((s, it) => s + Number(it.total || 0), 0);
+            const iva = Math.round(neto * 0.19);
+            const total = neto + iva;
+            const dateText = h.date ? new Date(h.date + 'T12:00:00').toLocaleDateString('es-CL') : '--/--/----';
+
+            const rows = quoteItems.map(it => `
+                <tr>
+                    <td style="padding:15px 8px; text-align:center; font-weight:700; font-size:15px;">${escapeHtmlSafe(it.qty || '')}</td>
+                    <td style="padding:15px 8px; font-size:13px; line-height:1.4;">${escapeHtmlSafe(it.name || '')}</td>
+                    <td style="padding:15px 8px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height:30mm; max-width:30mm; object-fit:contain; border-radius:6px;">` : ''}</td>
+                    <td style="padding:15px 8px; text-align:right; font-weight:800; font-size:13px;">${formatCLP(it.price)}</td>
+                    <td style="padding:15px 8px; text-align:right; font-weight:800; font-size:14px;">${formatCLP(it.total)}</td>
+                </tr>
+            `).join('');
+
+            return `
+                <div class="pdf-page" style="background:white !important; color:#1e293b !important; width:210mm; min-height:297mm; padding:15mm; display:flex; flex-direction:column; box-sizing:border-box; margin:0 auto;">
+                    <div style="flex:1;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:25px; border-bottom:4px solid #0f172a; padding-bottom:15px;">
+                            <img src="logo.png" style="height:70px; width:auto; object-fit:contain; display:block;">
+                            <div style="text-align:right;">
+                                <h2 style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-${escapeHtmlSafe(h.folio || '')} | ${escapeHtmlSafe((h.desc || 'GENERAL').toUpperCase())}</h2>
+                                <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b style="color:#0f172a">${dateText}</b></p>
+                            </div>
+                        </div>
+
+                        <div style="background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:30px; display:flex; justify-content:space-between;">
+                            <div style="width:65%;">
+                                <p style="font-size:8px; color:#64748b; font-weight:900; text-transform:uppercase; margin:0;">En atención a:</p>
+                                <b style="font-size:16px; text-transform:uppercase; color:#0f172a;">${escapeHtmlSafe(h.client || '---')}</b>
+                            </div>
+                            <div style="width:30%; text-align:right; border-left:2px solid #e2e8f0; padding-left:15px;">
+                                <p style="font-size:8px; color:#64748b; font-weight:900; text-transform:uppercase; margin:0;">Contacto:</p>
+                                <p style="font-size:11px; color:#0f172a; font-weight:600;"></p>
+                            </div>
+                        </div>
+
+                        <table style="width:100%; border-collapse:collapse;">
+                            <thead>
+                                <tr style="background:#0f172a; color:white; font-size:10px; text-transform:uppercase;">
+                                    <th style="padding:12px 8px; width:45px;">Cant</th>
+                                    <th style="padding:12px 8px; text-align:left;">Descripción</th>
+                                    <th style="padding:12px 8px; width:110px; text-align:center;">Imagen Ref.</th>
+                                    <th style="padding:12px 8px; width:90px; text-align:right;">P. Unit.</th>
+                                    <th style="padding:12px 8px; width:100px; text-align:right;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+
+                    <div style="margin-top:50px; border-top:1px solid #eee; padding-top:25px;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:30px;">
+                            <div style="width:330px; background:#f0f9ff; border:1px solid #bae6fd; padding:15px; border-radius:12px;">
+                                <b style="font-size:9px; color:#0369a1;">PAGO POR TRANSFERENCIA</b>
+                                <div style="font-size:11px; color:#0c4a6e; line-height:1.6; margin-top:8px;"><b>Banco Estado</b> | Vista<br><b>N°:</b> 37370574546 | <b>RUT:</b> 76.823.326-8<br><b>LABORATORIO CREATIVO EUREKA SPA</b></div>
+                            </div>
+                            <div style="width:240px; text-align:right;">
+                                <div style="display:flex; justify-content:space-between; font-size:13px;"><span>Neto:</span><b>${formatCLP(neto)}</b></div>
+                                <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:10px; border-bottom:2px solid #ddd; padding-bottom:5px;"><span>IVA:</span><b>${formatCLP(iva)}</b></div>
+                                <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-size:11px; font-weight:900; color:#3b82f6;">TOTAL</span><h2 style="font-size:30px; font-weight:900; color:#0f172a; margin:0;">${formatCLP(total)}</h2></div>
+                            </div>
+                        </div>
+                        <div style="border-top:3px solid #0f172a; padding-top:18px; font-size:10px; color:#475569; text-align:center;">
+                            <div style="font-size:11px; font-weight:900; color:#0f172a; margin-bottom:8px;">LABORATORIO CREATIVO EUREKA SPA</div>
+                            <div style="display:flex; justify-content:center; align-items:center; gap:14px; flex-wrap:nowrap; white-space:nowrap;">
+                                <span>📍 Manuel Rodríguez 723, Isla de Maipo</span>
+                                <span>📧 contacto@eurekalaboratorio.cl</span>
+                                <span>🌐 www.eurekalaboratorio.cl</span>
+                                <span>📞 +56 9 8827 7250</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function openQuickViewById(id) {
+            const h = (window.historial || []).find(x => x.id === id);
+            if(!h) return alert("No se encontró la cotización seleccionada");
+            openQuickView(h);
+        }
+
+        async function openQuickView(h) {
+            const modal = document.getElementById('quick-view-modal');
+            const wrapper = document.getElementById('cloned-pdf-wrapper');
+
+            wrapper.innerHTML = buildQuotePreviewHTML(h);
+
+            document.getElementById('qv-share-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'share', h);
+            document.getElementById('qv-download-btn').onclick = () => generateAndSharePDF(h.folio, h.client, 'save', h);
+
+            modal.style.display = "flex";
+            document.body.style.overflow = "hidden";
+            initHistorialZoom();
+        }
+
+        function closeQuickView() {
+            const modal = document.getElementById('quick-view-modal');
+            const wrapper = document.getElementById('cloned-pdf-wrapper');
+            if(!modal || !wrapper) return;
+            modal.style.display = "none";
+            wrapper.innerHTML = "";
+            wrapper.style.transform = "";
+            delete internalZoom["cloned-pdf-wrapper"];
+            document.body.style.overflow = "";
+        }
+
+        async function generateAndSharePDF(folio, clientName, mode, quoteData = null) {
+            try {
+                const JsPDFClass = window.jspdf?.jsPDF || window.jsPDF;
+
+                if(!JsPDFClass) {
+                    alert("Error generando PDF: no se cargó jsPDF. Revisa conexión a internet o CDN.");
+                    return;
+                }
+
+                const q = quoteData || {
+                    folio: folio,
+                    client: document.getElementById('q-client').value,
+                    items: [...items],
+                    date: document.getElementById('q-date-input').value,
+                    desc: document.getElementById('q-desc').value || ""
+                };
+
+                const pdf = new JsPDFClass({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+
+                const pageW = 210;
+                const pageH = 297;
+                const m = 15;
+                const contentW = pageW - (m * 2);
+                const money = n => "$" + Number(n || 0).toLocaleString('es-CL');
+                const fmtDate = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('es-CL') : "--/--/----";
+                const clientObj = (window.clientes || []).find(c => c.name === q.client) || {};
+                const neto = (q.items || []).reduce((s, it) => s + Number(it.total || 0), 0);
+                const iva = Math.round(neto * 0.19);
+                const total = neto + iva;
+
+                const logoPDF = await loadLogoForPDF();
+
+                let y = 15;
+
+                function addPageIfNeeded(needed) {
+                    if(y + needed > pageH - 18) {
+                        pdf.addPage();
+                        y = 15;
+                        drawHeader(true);
+                    }
+                }
+
+                function drawHeader(compact = false) {
+                    pdf.setTextColor(15, 23, 42);
+
+                    if(!compact) {
+                        if(logoPDF && logoPDF.data) {
+                            const logoW = 62;
+                            const logoH = logoW / (logoPDF.width / logoPDF.height);
+                            pdf.addImage(logoPDF.data, 'PNG', m, y, logoW, logoH);
+                        }
+
+                        pdf.setFontSize(16);
+                        pdf.setFont(undefined, 'bold');
+
+                        const descText = (q.desc || 'GENERAL').toUpperCase();
+                        pdf.text(`COT-${q.folio || folio} | ${descText}`, pageW - m, y + 7, { align: 'right' });
+
+                        pdf.setFontSize(8);
+                        pdf.setFont(undefined, 'normal');
+                        pdf.setTextColor(100, 116, 139);
+                        pdf.text(`FECHA: ${fmtDate(q.date)}`, pageW - m, y + 13, { align: 'right' });
+
+                        y += 24;
+
+                        pdf.setDrawColor(15, 23, 42);
+                        pdf.setLineWidth(1.2);
+                        pdf.line(m, y, pageW - m, y);
+                        y += 8;
+
+                        pdf.setFillColor(248, 250, 252);
+                        pdf.setDrawColor(226, 232, 240);
+                        pdf.roundedRect(m, y, contentW, 24, 3, 3, 'FD');
+
+                        pdf.setFontSize(7);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.setTextColor(100, 116, 139);
+                        pdf.text("EN ATENCIÓN A:", m + 4, y + 7);
+
+                        pdf.setFontSize(11);
+                        pdf.setTextColor(15, 23, 42);
+                        pdf.text(String(q.client || "---").toUpperCase(), m + 4, y + 13, { maxWidth: 110 });
+
+                        pdf.setFontSize(8);
+                        pdf.setFont(undefined, 'normal');
+                        pdf.setTextColor(71, 85, 105);
+                        if(clientObj.address) pdf.text(String(clientObj.address), m + 4, y + 19, { maxWidth: 110 });
+
+                        pdf.setFontSize(7);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.setTextColor(100, 116, 139);
+                        pdf.text("CONTACTO:", pageW - m - 52, y + 7);
+
+                        pdf.setFontSize(8);
+                        pdf.setTextColor(15, 23, 42);
+                        if(clientObj.phone) pdf.text(String(clientObj.phone), pageW - m - 52, y + 13, { maxWidth: 48 });
+
+                        y += 32;
+                    } else {
+                        pdf.setFontSize(9);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.text(`COT-${q.folio || folio} / ${String(q.client || "---").toUpperCase()}`, m, y);
+                        y += 6;
+                    }
+
+                    drawTableHeader();
+                }
+
+                function drawTableHeader() {
+                    pdf.setFillColor(15, 23, 42);
+                    pdf.rect(m, y, contentW, 9, 'F');
+
+                    pdf.setFontSize(7);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.setTextColor(255, 255, 255);
+
+                    pdf.text("CANT", m + 4, y + 6);
+                    pdf.text("DESCRIPCIÓN", m + 22, y + 6);
+                    pdf.text("IMAGEN", m + 108, y + 6);
+                    pdf.text("P. UNIT.", m + 151, y + 6, { align: 'right' });
+                    pdf.text("TOTAL", pageW - m - 3, y + 6, { align: 'right' });
+
+                    y += 9;
+                }
+
+                function drawFooter() {
+                    addPageIfNeeded(55);
+
+                    if (y < pageH - 76) {
+                        y = pageH - 76;
+                    } else {
+                        y += 8;
+                    }
+
+                    pdf.setFillColor(240, 249, 255);
+                    pdf.setDrawColor(186, 230, 253);
+                    pdf.roundedRect(m, y, 90, 28, 3, 3, 'FD');
+
+                    pdf.setFontSize(7);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.setTextColor(3, 105, 161);
+                    pdf.text("PAGO POR TRANSFERENCIA", m + 4, y + 6);
+
+                    pdf.setFontSize(8);
+                    pdf.setFont(undefined, 'normal');
+                    pdf.setTextColor(12, 74, 110);
+                    pdf.text("Banco Estado | Vista", m + 4, y + 12);
+                    pdf.text("N°: 37370574546 | RUT: 76.823.326-8", m + 4, y + 18);
+                    pdf.text("LABORATORIO CREATIVO EUREKA SPA", m + 4, y + 24);
+
+                    const tx = pageW - m - 60;
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(15, 23, 42);
+                    pdf.text("Neto:", tx, y + 7);
+                    pdf.text(money(neto), pageW - m, y + 7, { align: 'right' });
+                    pdf.text("IVA:", tx, y + 14);
+                    pdf.text(money(iva), pageW - m, y + 14, { align: 'right' });
+
+                    pdf.setFontSize(15);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.text("TOTAL", tx, y + 25);
+                    pdf.text(money(total), pageW - m, y + 25, { align: 'right' });
+
+                    y += 38;
+
+                    pdf.setDrawColor(15, 23, 42);
+                    pdf.setLineWidth(0.8);
+                    pdf.line(m, y, pageW - m, y);
+                    y += 7;
+
+                    pdf.setFontSize(8);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.setTextColor(15, 23, 42);
+                    pdf.text("LABORATORIO CREATIVO EUREKA SPA", pageW / 2, y, { align: 'center' });
+
+                    y += 7;
+
+                    pdf.setFontSize(6.6);
+                    pdf.setFont(undefined, 'normal');
+                    pdf.setTextColor(71, 85, 105);
+
+                    pdf.setDrawColor(59, 130, 246);
+                    pdf.setFillColor(59, 130, 246);
+                    pdf.setLineWidth(0.3);
+
+                    const footerY = y;
+                    const footerStartX = 23;
+                    const itemGap = 43;
+                    const textOffset = 5;
+
+                    const locX = footerStartX;
+                    const mailX = footerStartX + itemGap + 10;
+                    const webIconX = footerStartX + (itemGap * 2) + 22;
+                    const telIconX = footerStartX + (itemGap * 3) + 26;
+
+                    pdf.circle(locX + 1.8, footerY - 0.65, 1.15, 'S');
+                    pdf.circle(locX + 1.8, footerY - 0.65, 0.32, 'F');
+                    pdf.line(locX + 1.8, footerY + 0.5, locX + 1.8, footerY + 1.3);
+                    pdf.text("Manuel Rodríguez 723, Isla de Maipo", locX + textOffset, footerY);
+
+                    pdf.rect(mailX + 0.2, footerY - 1.75, 3.2, 2.2, 'S');
+                    pdf.line(mailX + 0.2, footerY - 1.75, mailX + 1.8, footerY - 0.45);
+                    pdf.line(mailX + 3.4, footerY - 1.75, mailX + 1.8, footerY - 0.45);
+                    pdf.text("contacto@eurekalaboratorio.cl", mailX + textOffset, footerY);
+
+                    pdf.circle(webIconX + 1.8, footerY - 0.65, 1.5, 'S');
+                    pdf.line(webIconX + 0.35, footerY - 0.65, webIconX + 3.25, footerY - 0.65);
+                    pdf.line(webIconX + 1.8, footerY - 2.15, webIconX + 1.8, footerY + 0.85);
+                    pdf.text("www.eurekalaboratorio.cl", webIconX + textOffset, footerY);
+
+                    pdf.roundedRect(telIconX + 0.6, footerY - 2.15, 2.5, 3.1, 0.5, 0.5, 'S');
+                    pdf.circle(telIconX + 1.85, footerY + 0.45, 0.18, 'F');
+                    pdf.text("+56 9 8827 7250", telIconX + textOffset, footerY);
+                }
+
+                function drawItemRow(it) {
+                    const desc = String(it.name || "");
+                    const lines = pdf.splitTextToSize(desc, 78);
+                    const lineH = 4.4;
+                    const maxLinesPerPart = 38;
+                    let index = 0;
+                    let part = 0;
+
+                    while(index < lines.length || part === 0) {
+                        const remaining = lines.length - index;
+                        const take = Math.max(1, Math.min(maxLinesPerPart, remaining || 1));
+                        const partLines = lines.slice(index, index + take);
+
+                        const hasImage = part === 0 && it.img;
+                        const rowH = Math.max(12, partLines.length * lineH + 7, hasImage ? 24 : 0);
+
+                        addPageIfNeeded(rowH + 2);
+
+                        pdf.setDrawColor(226, 232, 240);
+                        pdf.setLineWidth(0.2);
+                        pdf.rect(m, y, contentW, rowH);
+
+                        pdf.setFontSize(8);
+                        pdf.setFont(undefined, 'bold');
+                        pdf.setTextColor(15, 23, 42);
+
+                        if(part === 0) {
+                            pdf.text(String(it.qty || ""), m + 7, y + 8, { align: 'center' });
+                        }
+
+                        pdf.setFontSize(8);
+                        pdf.setFont(undefined, 'normal');
+                        pdf.text(partLines, m + 22, y + 7, { maxWidth: 78 });
+
+                        if(hasImage) {
+                            try {
+                                pdf.addImage(it.img, 'JPEG', m + 107, y + 3, 24, 18);
+                            } catch(e) {}
+                        }
+
+                        if(part === 0) {
+                            pdf.setFont(undefined, 'bold');
+                            pdf.text(money(it.price || 0), m + 151, y + 8, { align: 'right' });
+                            pdf.text(money(it.total), pageW - m - 3, y + 8, { align: 'right' });
+                        }
+
+                        y += rowH;
+                        index += take;
+                        part++;
+                    }
+                }
+
+                drawHeader(false);
+                (q.items || []).forEach(drawItemRow);
+                drawFooter();
+
+                if(mode === 'share' && navigator.share) {
+                    const pdfBlob = pdf.output('blob');
+                    const file = new File([pdfBlob], `COT_${q.folio || folio}.pdf`, { type: 'application/pdf' });
+                    await navigator.share({ files: [file], title: `Cotización #${q.folio || folio}` });
+                } else {
+                    pdf.save(`COT_${q.folio || folio}.pdf`);
+                }
+
+            } catch(err) {
+                console.error(err);
+                alert("Error generando PDF: " + (err.message || err));
+            }
+        }
+
+        async function saveAndSend() {
+            const c = document.getElementById('q-client').value; 
+            if(!c || items.length === 0) return alert("Faltan datos");
+
+            let f = editingId ? window.currentFolio : window.nextFolio;
+
+            if(!editingId) {
+                await fb.runTransaction(fb.db, async (t) => {
+                    const snap = await t.get(fb.doc(fb.db, "config", "eureka_erp_v10"));
+                    f = snap.exists() ? snap.data().lastFolio : 1000;
+                    t.update(fb.doc(fb.db, "config", "eureka_erp_v10"), { lastFolio: f + 1 });
+                });
+            }
+
+            const data = { 
+                folio: f, 
+                client: c, 
+                items, 
+                date: document.getElementById('q-date-input').value, 
+                neto: items.reduce((s,i)=>s+i.total,0), 
+                desc: document.getElementById('q-desc').value 
+            };
+
+            if(editingId) await fb.setDoc(fb.doc(fb.db, "erp_cotizaciones", editingId), data);
+            else await fb.addDoc(fb.collection(fb.db, "erp_cotizaciones"), data);
+
+            await generateAndSharePDF(f, c, 'share');
+            items = []; 
+            editingId = null; 
+            renderPreview();
+        }
+
+        function renderHistory() {
+            const s = document.getElementById('search-hist').value.toLowerCase();
+            const data = window.historial || [];
+            const filtered = data.filter(h => (h.client || '').toLowerCase().includes(s) || String(h.folio || '').includes(s));
+            document.getElementById('history-content').innerHTML = filtered.map(h => `
+                <div class="bg-slate-800 p-5 rounded-2xl border-l-4 border-blue-500 shadow-xl flex justify-between items-center">
+                    <div class="truncate mr-4"><b class="text-white uppercase text-sm">${h.client}</b><br><small class="text-blue-400 font-bold">#${h.folio}</small></div>
+                    <div class="flex gap-2">
+                        <button onclick="openQuickViewById('${h.id}')" class="icon-btn">🔍</button>
+                        <button onclick="loadEdit('${h.id}')" class="icon-btn text-blue-400">✏️</button>
+                        <button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="icon-btn text-red-400">🗑️</button>
+                    </div>
+                </div>`).join('');
+        }
+
+        function updateUI() {
+            const sel = document.getElementById('q-client');
+            sel.innerHTML = '<option value="">-- CLIENTE --</option><option value="NEW">➕ NUEVO</option>';
+            (window.clientes || []).forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+            document.getElementById('clients-list').innerHTML = (window.clientes || []).map(c => `<div class="bg-slate-800 p-5 rounded-2xl flex justify-between border border-slate-700"><b>${c.name}</b><button onclick="fb.deleteDoc(fb.doc(fb.db,'erp_clientes','${c.id}'))" class="icon-btn text-red-400">🗑️</button></div>`).join('');
+        }
+
+        function addItem() {
+            const n = document.getElementById('i-name').value.toUpperCase().trim();
+            const p = Number(document.getElementById('i-price').value);
+            const q = Number(document.getElementById('i-qty').value);
+
+            if(!n || p <= 0 || q <= 0) return alert("Completa descripción, cantidad y precio");
+
+            items.push({
+                name: n,
+                price: p,
+                qty: q,
+                total: p * q,
+                img: tempImg || null
+            });
+
+            document.getElementById('i-name').value = "";
+            document.getElementById('i-price').value = "";
+            document.getElementById('i-qty').value = "1";
+
+            tempImg = null;
+
+            const fileInput = document.getElementById('f-img');
+            const status = document.getElementById('img-status');
+            const btn = document.getElementById('img-btn');
+
+            if(fileInput) fileInput.value = "";
+            if(status) {
+                status.classList.add('hidden');
+                status.innerHTML = "";
+            }
+            if(btn) btn.innerText = "📷";
+
+            renderPreview();
+        }
+
+        function editItem(i) {
+            const it = items[i];
+            if(!it) return;
+
+            document.getElementById('i-name').value = it.name || "";
+            document.getElementById('i-price').value = it.price || "";
+            document.getElementById('i-qty').value = it.qty || 1;
+
+            tempImg = it.img || null;
+
+            const status = document.getElementById('img-status');
+            const btn = document.getElementById('img-btn');
+
+            if(tempImg && status) {
+                status.classList.remove('hidden');
+                status.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <img src="${tempImg}" style="width:42px;height:42px;object-fit:cover;border-radius:8px;">
+                        <span>Editando imagen del ítem.</span>
+                    </div>`;
+            }
+
+            if(btn && tempImg) btn.innerText = "✅";
+
+            items.splice(i,1);
+            renderPreview();
+
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        function renderPreview() {
+            const d = document.getElementById('q-date-input').value;
+            document.getElementById('p-date').innerText = d ? new Date(d+'T12:00:00').toLocaleDateString('es-CL') : '--/--/----';
+
+            const cName = document.getElementById('q-client').value;
+            const c = window.clientes?.find(x => x.name === cName) || {};
+            document.getElementById('p-client').innerText = c.name || '---';
+            document.getElementById('p-address-val').innerText = c.address || '';
+            document.getElementById('p-contact-val').innerText = c.phone || '';
+
+            const f = editingId ? window.currentFolio : (window.nextFolio || 1000);
+            document.getElementById('p-folio').innerText = `COT-${f} | ${document.getElementById('q-desc').value.toUpperCase() || 'GENERAL'}`;
+
+            document.getElementById('p-body').innerHTML = items.map(it => `
+                <tr>
+                    <td style="padding:15px 8px; text-align:center; font-weight:700; font-size:15px;">${it.qty}</td>
+                    <td style="padding:15px 8px; font-size:13px; line-height:1.4;">${it.name}</td>
+                    <td style="padding:15px 8px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height: 30mm; max-width: 30mm; object-fit: contain; border-radius:6px;">` : ''}</td>
+                    <td style="padding:15px 8px; text-align:right; font-weight:800; font-size:13px;">$${Number(it.price || 0).toLocaleString('es-CL')}</td>
+                    <td style="padding:15px 8px; text-align:right; font-weight:800; font-size:14px;">$${Number(it.total || 0).toLocaleString('es-CL')}</td>
+                </tr>`).join('');
+
+            const n = items.reduce((s,i) => s + i.total, 0);
+            const v = Math.round(n * 0.19);
+            document.getElementById('p-sub').innerText = `$${n.toLocaleString('es-CL')}`;
+            document.getElementById('p-iva').innerText = `$${v.toLocaleString('es-CL')}`;
+            document.getElementById('p-total').innerText = `$${(n + v).toLocaleString('es-CL')}`;
+
+            document.getElementById('items-list').innerHTML = items.map((it, i) => `
+                <div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center gap-3">
+                    ${it.img ? `<img src="${it.img}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0">` : ''}
+                    <span class="truncate flex-1 text-white text-xs font-bold uppercase">${it.name}</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="editItem(${i})" class="text-blue-400 text-lg px-2">✏️</button>
+                        <button onclick="items.splice(${i},1);renderPreview();" class="text-red-500 text-xl px-2">✕</button>
+                    </div>
+                </div>`).join('');
+
+            initCotizadorZoom(false);
+        }
+
+        function loadEdit(id) { 
+            const h = window.historial.find(x => x.id === id); 
+            items = h.items || []; 
+            editingId = id; 
+            window.currentFolio = h.folio; 
+            document.getElementById('q-client').value = h.client; 
+            document.getElementById('q-date-input').value = h.date; 
+            document.getElementById('q-desc').value = h.desc || ""; 
+            navTo('edit'); 
+            renderPreview(); 
+        }
+
+        function handleImg(input) {
+            const file = input.files && input.files[0];
+            const status = document.getElementById('img-status');
+            const btn = document.getElementById('img-btn');
+
+            if(!file) return;
+
+            if(!file.type || !file.type.startsWith('image/')) {
+                alert("El archivo seleccionado no es una imagen.");
+                input.value = "";
+                return;
+            }
+
+            if(status) {
+                status.classList.remove('hidden');
+                status.innerHTML = "Cargando imagen...";
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = e => {
+                const image = new Image();
+
+                image.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const maxSize = 420;
+
+                    let w = image.width;
+                    let h = image.height;
+
+                    if(w > h && w > maxSize) {
+                        h = Math.round(h * maxSize / w);
+                        w = maxSize;
+                    } else if(h > maxSize) {
+                        w = Math.round(w * maxSize / h);
+                        h = maxSize;
+                    }
+
+                    canvas.width = w;
+                    canvas.height = h;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(image, 0, 0, w, h);
+
+                    tempImg = canvas.toDataURL('image/jpeg', 0.62);
+
+                    if(status) {
+                        status.innerHTML = `
+                            <div class="flex items-center gap-3">
+                                <img src="${tempImg}" style="width:42px;height:42px;object-fit:cover;border-radius:8px;">
+                                <span>Imagen lista y optimizada. Ahora presiona “Agregar Ítem”.</span>
+                            </div>`;
+                    }
+
+                    if(btn) btn.innerText = "✅";
+                };
+
+                image.onerror = () => {
+                    tempImg = null;
+                    if(status) status.innerHTML = "No se pudo cargar la imagen.";
+                    if(btn) btn.innerText = "📷";
+                };
+
+                image.src = e.target.result;
+            };
+
+            reader.onerror = () => {
+                tempImg = null;
+                if(status) status.innerHTML = "No se pudo leer la imagen.";
+                if(btn) btn.innerText = "📷";
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        async function saveClient() { 
+            const data = { 
+                name: document.getElementById('c-name').value.toUpperCase(), 
+                phone: document.getElementById('c-phone').value, 
+                address: document.getElementById('c-address').value 
+            }; 
+
+            if(data.name) await fb.addDoc(fb.collection(fb.db, "erp_clientes"), data); 
+            ['c-name', 'c-phone', 'c-address'].forEach(id => document.getElementById(id).value = ''); 
+            navTo('edit'); 
+        }
+
+        function checkNewClient(el) { 
+            if(el.value === "NEW") { 
+                navTo('clients'); 
+                el.value="";
+            } else {
+                renderPreview(); 
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            setTimeout(() => initCotizadorZoom(true), 150);
+            const modal = document.getElementById('quick-view-modal');
+            if (modal && modal.style.display === "flex") {
+                setTimeout(initHistorialZoom, 150);
+            }
+        });
     </script>
 </body>
 </html>
