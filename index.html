@@ -7,69 +7,46 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    </head>
-<body>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyCtlfBJ0QHOMhEDPRAXHL9nRFswnr49rik",
+            authDomain: "registro-de-gastos-a21e8.firebaseapp.com",
+            projectId: "registro-de-gastos-a21e8",
+            storageBucket: "registro-de-gastos-a21e8.firebasestorage.app",
+            messagingSenderId: "947355933583",
+            appId: "1:947355933583:web:0231b493d8b794cc3b49fa"
+        };
 
-    <table style="width:100%; border-collapse:collapse;">
-        <thead>
-            <tr style="background:#0f172a; color:white; font-size:10px; text-transform:uppercase;">
-                <th style="padding:12px 10px; width:50px;">Cant</th>
-                <th style="padding:12px 10px; text-align:left;">Descripción</th>
-                <th style="padding:12px 10px; width:100px; text-align:center;">P. Unit</th>
-                <th style="padding:12px 10px; width:100px; text-align:center;">Imagen</th>
-                <th style="padding:12px 10px; text-align:right; width:110px;">Total</th>
-            </tr>
-        </thead>
-        <tbody id="p-body"></tbody>
-    </table>
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        window.fb = { db, doc, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction };
 
-    <script>
-        // --- FUNCIÓN RENDER PREVIEW (CORREGIDA PARA NO CONGELAR) ---
-        function renderPreview() {
-            const f = editingId ? window.currentFolio : (window.nextFolio || 1000);
-            document.getElementById('p-folio').innerText = `COT-${f} | ${document.getElementById('q-desc').value.toUpperCase() || 'GENERAL'}`;
-            
-            // Usamos un mapeo directo para evitar bucles pesados innecesarios
-            document.getElementById('p-body').innerHTML = items.map(it => `
-                <tr>
-                    <td style="padding:10px; text-align:center; font-weight:700;">${it.qty}</td>
-                    <td style="padding:10px; font-size:13px;">${it.name}</td>
-                    <td style="padding:10px; text-align:center;">${formatCLP(it.price)}</td>
-                    <td style="padding:10px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height:40px; max-width:40px; object-fit:contain;">` : ''}</td>
-                    <td style="padding:10px; text-align:right; font-weight:800;">${formatCLP(it.total)}</td>
-                </tr>
-            `).join('');
+        onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
+            window.nextFolio = (d.exists()) ? Number(d.data().lastFolio) : 1000;
+            renderPreview();
+        });
 
-            // Recalculo rápido de totales
-            const n = items.reduce((s,i) => s + i.total, 0), v = Math.round(n * 0.19);
-            document.getElementById('p-sub').innerText = formatCLP(n);
-            document.getElementById('p-iva').innerText = formatCLP(v);
-            document.getElementById('p-total').innerText = formatCLP(n + v);
-            
-            // Forzar refresco del zoom táctil de forma asíncrona
-            setTimeout(() => initCotizadorZoom(false), 50);
-        }
+        onSnapshot(collection(db, "erp_clientes"), (s) => {
+            window.clientes = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.name.localeCompare(b.name));
+            updateUI();
+        });
 
-        // --- FUNCIÓN DRAW TABLE HEADER (PDF) ---
-        function drawTableHeader() {
-            pdf.setFillColor(15, 23, 42);
-            pdf.rect(m, y, contentW, 9, 'F');
-            pdf.setFontSize(7);
-            pdf.setTextColor(255, 255, 255);
-            pdf.text("CANT", m + 4, y + 6);
-            pdf.text("DESCRIPCIÓN", m + 22, y + 6);
-            pdf.text("P. UNIT", m + 115, y + 6, { align: 'right' });
-            pdf.text("IMAGEN", m + 125, y + 6);
-            pdf.text("TOTAL", pageW - m - 3, y + 6, { align: 'right' });
-            y += 9;
-        }
-
-        // --- FUNCIÓN DRAW ITEM ROW (PDF) ---
-        // Asegúrate de añadir esta línea dentro de tu ciclo while:
-        if(part === 0) {
-            pdf.setFont(undefined, 'normal');
-            pdf.text(money(it.price), m + 124, y + 8, { align: 'right' });
-        }
+        onSnapshot(collection(db, "erp_cotizaciones"), (s) => {
+            window.historial = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => b.folio - a.folio);
+            renderHistory();
+        });
     </script>
-</body>
-</html>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #020617; color: #f1f5f9; margin: 0; overflow-x: hidden; }
+        .input-dark { background: #1e293b; border: 1px solid #334155; padding: 14px; border-radius: 12px; width: 100%; color: white; outline: none; font-size: 16px; box-sizing: border-box; }
+        .tab-content { display: none; width: 100%; padding: 20px; box-sizing: border-box; }
+        .tab-content.active { display: block; }
+        .pdf-page { background: white !important; color: #1e293b !important; width: 210mm; min-height: 297mm; padding: 15mm; display: flex; flex-direction: column; box-sizing: border-box; margin: 0 auto; }
+        #preliminar-container { position: relative !important; overflow: hidden !important; touch-action: none !important; height: 72vh; min-height: 460px; }
+        #pdf-touch-wrapper { position: absolute
