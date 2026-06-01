@@ -7,167 +7,69 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
-    
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, onSnapshot, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyCtlfBJ0QHOMhEDPRAXHL9nRFswnr49rik",
-            authDomain: "registro-de-gastos-a21e8.firebaseapp.com",
-            projectId: "registro-de-gastos-a21e8",
-            storageBucket: "registro-de-gastos-a21e8.firebasestorage.app",
-            messagingSenderId: "947355933583",
-            appId: "1:947355933583:web:0231b493d8b794cc3b49fa"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        window.fb = { db, doc, updateDoc, increment, collection, addDoc, deleteDoc, setDoc, getDoc, runTransaction };
-
-        onSnapshot(doc(db, "config", "eureka_erp_v10"), (d) => {
-            window.nextFolio = (d.exists()) ? Number(d.data().lastFolio) : 1000;
-            renderPreview();
-        });
-
-        onSnapshot(collection(db, "erp_clientes"), (s) => {
-            window.clientes = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.name.localeCompare(b.name));
-            updateUI();
-        });
-
-        onSnapshot(collection(db, "erp_cotizaciones"), (s) => {
-            window.historial = s.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => b.folio - a.folio);
-            renderHistory();
-        });
-    </script>
-
-    <style>
-        body { font-family: 'Inter', sans-serif; background: #020617; color: #f1f5f9; margin: 0; overflow-x: hidden; }
-        .input-dark { background: #1e293b; border: 1px solid #334155; padding: 14px; border-radius: 12px; width: 100%; color: white; outline: none; font-size: 16px; box-sizing: border-box; }
-        .tab-content { display: none; width: 100%; padding: 20px; box-sizing: border-box; }
-        .tab-content.active { display: block; }
-        .pdf-page { background: white !important; color: #1e293b !important; width: 210mm; min-height: 297mm; padding: 15mm; display: flex; flex-direction: column; box-sizing: border-box; margin: 0 auto; }
-        #preliminar-container { width: 100%; height: 70vh; min-height: 520px; overflow: hidden; padding: 0; background: #020617; position: relative; touch-action: none; border-radius: 18px; }
-        #pdf-preview-wrapper { position: absolute; top: 0; left: 0; width: fit-content; transform-origin: 0 0; will-change: transform; }
-        #pdf-canvas { zoom: 1 !important; transform: none !important; margin: 0 !important; }
-        #quick-view-modal { position: fixed; inset: 0; width: 100vw; height: 100vh; background: #020617; z-index: 99999; display: none; flex-direction: column; }
-        #qv-header { background: #0f172a; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; }
-        #qv-body { flex: 1; overflow: hidden; background: #020617; position: relative; touch-action: none; }
-        #cloned-pdf-wrapper { position: absolute; top: 0; left: 0; width: fit-content; transform-origin: 0 0; will-change: transform; }
-        .icon-btn { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: #1e293b; font-size: 20px; color: white; border: none; cursor: pointer; }
-    </style>
-</head>
+    </head>
 <body>
 
-    <nav class="flex bg-slate-950 border-b border-slate-800 sticky top-0 z-[100]">
-        <button onclick="navTo('edit')" id="m-edit" class="flex-1 p-4 font-black text-[11px] uppercase text-blue-500 border-b-2 border-blue-500">Cotizador</button>
-        <button onclick="navTo('hist')" id="m-hist" class="flex-1 p-4 font-black text-[11px] uppercase text-slate-500 border-b-2 border-transparent">Historial</button>
-        <button onclick="navTo('clients')" id="m-clients" class="flex-1 p-4 font-black text-[11px] uppercase text-slate-500 border-b-2 border-transparent">Clientes</button>
-    </nav>
-
-    <div id="quick-view-modal">
-        <div id="qv-header">
-            <button onclick="closeQuickView()" class="text-white text-xl font-bold bg-slate-800 px-4 py-2 rounded-lg">CERRAR</button>
-            <div class="flex gap-4">
-                <button id="qv-share-btn" class="icon-btn text-emerald-400">🔗</button>
-                <button id="qv-download-btn" class="icon-btn text-blue-400">⬇️</button>
-            </div>
-        </div>
-        <div id="qv-body">
-            <div id="cloned-pdf-wrapper"></div>
-        </div>
-    </div>
-
-    <div id="sec-edit" class="tab-content active">
-        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
-            <div class="lg:w-[400px] space-y-4">
-                <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 space-y-3">
-                    <input type="date" id="q-date-input" class="input-dark">
-                    <select id="q-client" class="input-dark" onchange="checkNewClient(this)"></select>
-                    <input type="text" id="q-desc" placeholder="Referencia del proyecto..." class="input-dark" oninput="renderPreview()">
-                </div>
-                <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-4 shadow-2xl">
-                    <textarea id="i-name" placeholder="Descripción..." class="input-dark h-24 text-sm resize-none"></textarea>
-                    <div class="flex gap-3">
-                        <input type="number" id="i-qty" value="1" class="input-dark text-center w-20">
-                        <input type="number" id="i-price" placeholder="$ Precio" class="input-dark flex-1">
-                        <label for="f-img" id="img-btn" class="bg-slate-700 px-4 rounded-xl flex items-center justify-center cursor-pointer min-w-[54px]">📷</label>
-                    </div>
-                    <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
-                    <div id="img-status" class="hidden bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-emerald-300 font-bold"></div>
-                    <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase">Agregar Ítem</button>
-                </div>
-                <div id="items-list" class="space-y-2"></div>
-                <button onclick="saveAndSend()" class="w-full bg-emerald-500 py-6 rounded-2xl font-black text-lg uppercase shadow-2xl">Guardar y Enviar PDF</button>
-            </div>
-
-            <div id="preliminar-container">
-                <div id="pdf-preview-wrapper">
-                    <div id="pdf-canvas" class="pdf-page">
-                        <!-- Estructura del PDF -->
-                        <div style="flex: 1;">
-                            <div style="display:flex; justify-content:space-between; align-items: flex-start; margin-bottom: 25px; border-bottom: 4px solid #0f172a; padding-bottom: 15px;">
-                                <img src="logo.png" style="height:70px; width:auto; object-fit:contain; display:block;">
-                                <div style="text-align:right;">
-                                    <h2 id="p-folio" style="font-size:18px; font-weight:900; margin:0; color:#0f172a;">COT-1000</h2>
-                                    <p style="font-size:11px; margin:3px 0 0; color:#64748b;">FECHA: <b id="p-date" style="color:#0f172a"></b></p>
-                                </div>
-                            </div>
-                            <table style="width:100%; border-collapse:collapse; margin-top:20px;">
-                                <thead><tr style="background:#0f172a; color:white; font-size:10px; text-transform:uppercase;"><th style="padding:12px 10px; width:50px;">Cant</th><th style="padding:12px 10px; text-align:left;">Descripción</th><th style="padding:12px 10px; width:80px; text-align:center;">P. Unit</th><th style="padding:12px 10px; width:100px; text-align:center;">Imagen</th><th style="padding:12px 10px; text-align:right; width:100px;">Total</th></tr></thead>
-                                <tbody id="p-body"></tbody>
-                            </table>
-                        </div>
-                        <!-- Pie de página, pagos, etc... (Omitido para brevedad visual, mantén tu lógica original abajo) -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Historial y Clientes (Mantén tu código original aquí abajo) -->
+    <table style="width:100%; border-collapse:collapse;">
+        <thead>
+            <tr style="background:#0f172a; color:white; font-size:10px; text-transform:uppercase;">
+                <th style="padding:12px 10px; width:50px;">Cant</th>
+                <th style="padding:12px 10px; text-align:left;">Descripción</th>
+                <th style="padding:12px 10px; width:100px; text-align:center;">P. Unit</th>
+                <th style="padding:12px 10px; width:100px; text-align:center;">Imagen</th>
+                <th style="padding:12px 10px; text-align:right; width:110px;">Total</th>
+            </tr>
+        </thead>
+        <tbody id="p-body"></tbody>
+    </table>
 
     <script>
-        // --- LOGICA RELEVANTE ---
-        function formatCLP(value) { return "$" + Number(value || 0).toLocaleString('es-CL'); }
-
+        // --- FUNCIÓN RENDER PREVIEW (CORREGIDA PARA NO CONGELAR) ---
         function renderPreview() {
-            // ... (resto de tu lógica de render)
-            document.getElementById('p-body').innerHTML = items.map(it => `<tr>
-                <td style="padding:15px 10px; text-align:center; font-weight:700;">${it.qty}</td>
-                <td style="padding:15px 10px; font-size:13px;">${it.name}</td>
-                <td style="padding:15px 10px; text-align:center;">${formatCLP(it.price)}</td>
-                <td style="padding:15px 10px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height: 30mm; max-width: 35mm; object-fit: contain;">` : ''}</td>
-                <td style="padding:15px 10px; text-align:right; font-weight:800;">${formatCLP(it.total)}</td>
-            </tr>`).join('');
-            // ... resto de tu render
+            const f = editingId ? window.currentFolio : (window.nextFolio || 1000);
+            document.getElementById('p-folio').innerText = `COT-${f} | ${document.getElementById('q-desc').value.toUpperCase() || 'GENERAL'}`;
+            
+            // Usamos un mapeo directo para evitar bucles pesados innecesarios
+            document.getElementById('p-body').innerHTML = items.map(it => `
+                <tr>
+                    <td style="padding:10px; text-align:center; font-weight:700;">${it.qty}</td>
+                    <td style="padding:10px; font-size:13px;">${it.name}</td>
+                    <td style="padding:10px; text-align:center;">${formatCLP(it.price)}</td>
+                    <td style="padding:10px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height:40px; max-width:40px; object-fit:contain;">` : ''}</td>
+                    <td style="padding:10px; text-align:right; font-weight:800;">${formatCLP(it.total)}</td>
+                </tr>
+            `).join('');
+
+            // Recalculo rápido de totales
+            const n = items.reduce((s,i) => s + i.total, 0), v = Math.round(n * 0.19);
+            document.getElementById('p-sub').innerText = formatCLP(n);
+            document.getElementById('p-iva').innerText = formatCLP(v);
+            document.getElementById('p-total').innerText = formatCLP(n + v);
+            
+            // Forzar refresco del zoom táctil de forma asíncrona
+            setTimeout(() => initCotizadorZoom(false), 50);
         }
 
-        async function generateAndSharePDF(folio, clientName, mode, quoteData = null) {
-            // ... (tu lógica de jsPDF)
-            function drawTableHeader() {
-                pdf.setFillColor(15, 23, 42);
-                pdf.rect(m, y, contentW, 9, 'F');
-                pdf.setFontSize(7);
-                pdf.setTextColor(255, 255, 255);
-                pdf.text("CANT", m + 4, y + 6);
-                pdf.text("DESCRIPCIÓN", m + 22, y + 6);
-                pdf.text("P. UNIT", m + 105, y + 6);
-                pdf.text("IMAGEN", m + 125, y + 6);
-                pdf.text("TOTAL", pageW - m - 3, y + 6, { align: 'right' });
-                y += 9;
-            }
-
-            function drawItemRow(it) {
-                // ... (lógica de iteración)
-                if(part === 0) {
-                    pdf.text(money(it.price), m + 115, y + 8, { align: 'right' });
-                }
-                // ... resto del dibujo
-            }
+        // --- FUNCIÓN DRAW TABLE HEADER (PDF) ---
+        function drawTableHeader() {
+            pdf.setFillColor(15, 23, 42);
+            pdf.rect(m, y, contentW, 9, 'F');
+            pdf.setFontSize(7);
+            pdf.setTextColor(255, 255, 255);
+            pdf.text("CANT", m + 4, y + 6);
+            pdf.text("DESCRIPCIÓN", m + 22, y + 6);
+            pdf.text("P. UNIT", m + 115, y + 6, { align: 'right' });
+            pdf.text("IMAGEN", m + 125, y + 6);
+            pdf.text("TOTAL", pageW - m - 3, y + 6, { align: 'right' });
+            y += 9;
         }
-        // ... (resto de tus funciones originales)
+
+        // --- FUNCIÓN DRAW ITEM ROW (PDF) ---
+        // Asegúrate de añadir esta línea dentro de tu ciclo while:
+        if(part === 0) {
+            pdf.setFont(undefined, 'normal');
+            pdf.text(money(it.price), m + 124, y + 8, { align: 'right' });
+        }
     </script>
 </body>
 </html>
