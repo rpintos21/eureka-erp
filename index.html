@@ -839,6 +839,38 @@
                     let index = 0;
                     let part = 0;
 
+                    // Ajustes de proporción síncronos por fila para centrar y evitar que se achate
+                    let imgW = 24;
+                    let imgH = 18;
+                    let dx = 0;
+                    let dy = 0;
+
+                    if (part === 0 && it.img) {
+                        try {
+                            const tempImgElement = new Image();
+                            tempImgElement.src = it.img;
+                            if (tempImgElement.width && tempImgElement.height) {
+                                const boxW = 24;
+                                const boxH = 18;
+                                const ratioBox = boxW / boxH;
+                                const ratioImg = tempImgElement.width / tempImgElement.height;
+
+                                if (ratioImg > ratioBox) {
+                                    imgW = boxW;
+                                    imgH = boxW / ratioImg;
+                                    dy = (boxH - imgH) / 2;
+                                } else {
+                                    imgH = boxH;
+                                    imgW = boxH * ratioImg;
+                                    dx = (boxW - imgW) / 2;
+                                }
+                            }
+                        } catch (e) {
+                            imgW = 24;
+                            imgH = 18;
+                        }
+                    }
+
                     while(index < lines.length || part === 0) {
                         const remaining = lines.length - index;
                         const take = Math.max(1, Math.min(maxLinesPerPart, remaining || 1));
@@ -867,8 +899,7 @@
 
                         if(hasImage) {
                             try {
-                                // CORRECCIÓN DIRECTA: Usando el parámetro 'NONE' de jsPDF mantiene la proporción exacta de la celda de origen
-                                pdf.addImage(it.img, 'JPEG', m + 107, y + 3, 24, 18, undefined, 'NONE');
+                                pdf.addImage(it.img, 'JPEG', m + 107 + dx, y + 3 + dy, imgW, imgH);
                             } catch(e) {}
                         }
 
