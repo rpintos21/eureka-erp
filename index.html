@@ -287,7 +287,7 @@
     </div>
 
     <script>
-        let items = [], tempImg = null, editingId = null;
+        let items = [], tempImg = null, editingId = null, editingItemIndex = null;
         document.getElementById('q-date-input').valueAsDate = new Date();
         window.addEventListener('load', () => initCotizadorZoom(true));
 
@@ -929,12 +929,18 @@
                 (q.items || []).forEach(drawItemRow);
                 drawFooter();
 
+                const projectDesc = String(q.desc || 'GENERAL')
+                    .trim()
+                    .replace(/[\\/:*?"<>|]/g, '-')
+                    .replace(/\s+/g, ' ');
+                const pdfFileName = `COT_${q.folio || folio}_${projectDesc}.pdf`;
+
                 if(mode === 'share' && navigator.share) {
                     const pdfBlob = pdf.output('blob');
-                    const file = new File([pdfBlob], `COT_${q.folio || folio}.pdf`, { type: 'application/pdf' });
+                    const file = new File([pdfBlob], pdfFileName, { type: 'application/pdf' });
                     await navigator.share({ files: [file], title: `Cotización #${q.folio || folio}` });
                 } else {
-                    pdf.save(`COT_${q.folio || folio}.pdf`);
+                    pdf.save(pdfFileName);
                 }
 
             } catch(err) {
@@ -1004,13 +1010,20 @@
 
             if(!n || p <= 0 || q <= 0) return alert("Completa descripción, cantidad y precio");
 
-            items.push({
+            const newItem = {
                 name: n,
                 price: p,
                 qty: q,
                 total: p * q,
                 img: tempImg || null
-            });
+            };
+
+            if (editingItemIndex !== null) {
+                items.splice(editingItemIndex, 0, newItem);
+                editingItemIndex = null;
+            } else {
+                items.push(newItem);
+            }
 
             document.getElementById('i-name').value = "";
             document.getElementById('i-price').value = "";
@@ -1041,6 +1054,7 @@
             document.getElementById('i-qty').value = it.qty || 1;
 
             tempImg = it.img || null;
+            editingItemIndex = i;
 
             const status = document.getElementById('img-status');
             const btn = document.getElementById('img-btn');
