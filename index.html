@@ -1010,16 +1010,20 @@
 
             if(!n || p <= 0 || q <= 0) return alert("Completa descripción, cantidad y precio");
 
+            // Cada ítem guarda su propia imagen de forma independiente.
             const newItem = {
                 name: n,
                 price: p,
                 qty: q,
                 total: p * q,
-                img: tempImg || null
+                img: tempImg ? String(tempImg) : null
             };
 
-            if (editingItemIndex !== null) {
-                items.splice(editingItemIndex, 0, newItem);
+            // Si estamos editando, el ítem editado pasa al PRIMER LUGAR.
+            // Los demás mantienen su orden relativo.
+            if (editingItemIndex !== null && items[editingItemIndex]) {
+                items.splice(editingItemIndex, 1);
+                items.unshift(newItem);
                 editingItemIndex = null;
             } else {
                 items.push(newItem);
@@ -1070,7 +1074,8 @@
 
             if(btn && tempImg) btn.innerText = "✅";
 
-            items.splice(i,1);
+            // El ítem permanece en la lista mientras se edita.
+            // De esta forma conserva exactamente su posición original.
             renderPreview();
 
             window.scrollTo({
