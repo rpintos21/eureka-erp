@@ -1130,15 +1130,27 @@
             const s = document.getElementById('search-hist').value.toLowerCase();
             const data = window.historial || [];
             const filtered = data.filter(h => (h.client || '').toLowerCase().includes(s) || String(h.folio || '').includes(s));
-            document.getElementById('history-content').innerHTML = filtered.map(h => `
+            document.getElementById('history-content').innerHTML = filtered.map(h => {
+                const netoHist = Number.isFinite(Number(h.neto))
+                    ? Number(h.neto)
+                    : (h.items || []).reduce((sum, it) => sum + Number(it.total || 0), 0);
+                const ivaHist = Math.round(netoHist * 0.19);
+                const totalHist = netoHist + ivaHist;
+
+                return `
                 <div class="bg-slate-800 p-5 rounded-2xl border-l-4 border-blue-500 shadow-xl flex justify-between items-center">
-                    <div class="truncate mr-4"><b class="text-white uppercase text-sm">COT-${h.folio} | ${(h.desc || 'GENERAL').toUpperCase()}</b><br><small class="text-blue-400 font-bold">${h.client}</small></div>
+                    <div class="truncate mr-4 flex-1">
+                        <b class="text-white uppercase text-sm">COT-${h.folio} | ${(h.desc || 'GENERAL').toUpperCase()}</b><br>
+                        <small class="text-blue-400 font-bold">${h.client}</small><br>
+                        <small class="text-emerald-400 font-black">TOTAL IVA INCL.: $${totalHist.toLocaleString('es-CL')}</small>
+                    </div>
                     <div class="flex gap-2">
                         <button onclick="openQuickViewById('${h.id}')" class="icon-btn">🔍</button>
                         <button onclick="loadEdit('${h.id}')" class="icon-btn text-blue-400">✏️</button>
                         <button onclick="if(confirm('¿Borrar?')) fb.deleteDoc(fb.doc(fb.db,'erp_cotizaciones','${h.id}'))" class="icon-btn text-red-400">🗑️</button>
                     </div>
-                </div>`).join('');
+                </div>`;
+            }).join('');
         }
 
         function updateUI() {
