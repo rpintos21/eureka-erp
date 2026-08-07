@@ -981,7 +981,7 @@
             const filtered = data.filter(h => (h.client || '').toLowerCase().includes(s) || String(h.folio || '').includes(s));
             document.getElementById('history-content').innerHTML = filtered.map(h => `
                 <div class="bg-slate-800 p-5 rounded-2xl border-l-4 border-blue-500 shadow-xl flex justify-between items-center">
-                    <div class="truncate mr-4"><b class="text-white uppercase text-sm">${h.client}</b><br><small class="text-blue-400 font-bold">#${h.folio}</small></div>
+                    <div class="truncate mr-4"><b class="text-white uppercase text-sm">COT-${h.folio} | ${(h.desc || 'GENERAL').toUpperCase()}</b><br><small class="text-blue-400 font-bold">${h.client}</small></div>
                     <div class="flex gap-2">
                         <button onclick="openQuickViewById('${h.id}')" class="icon-btn">🔍</button>
                         <button onclick="loadEdit('${h.id}')" class="icon-btn text-blue-400">✏️</button>
