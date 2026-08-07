@@ -201,7 +201,7 @@
                         <input type="number" id="i-price" placeholder="$ Precio" class="input-dark flex-1">
                         <label for="f-img" id="img-btn" class="bg-slate-700 px-4 rounded-xl flex items-center justify-center cursor-pointer min-w-[54px]">📷</label>
                     </div>
-                    <input type="file" id="f-img" class="hidden" accept="image/*" onchange="handleImg(this)">
+                    <input type="file" id="f-img" class="hidden" accept="image/*" multiple onchange="handleImg(this)">
                     <div id="img-status" class="hidden bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-emerald-300 font-bold"></div>
                     <button onclick="addItem()" class="w-full bg-blue-600 py-4 rounded-xl font-black text-xs uppercase">Agregar Ítem</button>
                 </div>
@@ -293,8 +293,52 @@
     </div>
 
     <script>
-        let items = [], tempImg = null, editingId = null, editingItemIndex = null;
+        let items = [], tempImgs = [], editingId = null, editingItemIndex = null;
         let loadedItemsSnapshot = [], deletedItemIds = new Set();
+
+        function getItemImages(it) {
+            if (!it || typeof it !== 'object') return [];
+            if (Array.isArray(it.imgs) && it.imgs.length) return it.imgs.filter(Boolean);
+            return it.img ? [it.img] : [];
+        }
+
+        function renderItemImagesHTML(it, size = 54) {
+            const imgs = getItemImages(it);
+            if (!imgs.length) return '';
+            return `<div style="display:flex;gap:4px;justify-content:center;align-items:center;flex-wrap:nowrap;">${imgs.map(src => `
+                <div style="width:${size}px;height:${size}px;min-width:${size}px;border-radius:8px;overflow:hidden;background:#0f172a;border:1px solid #475569;display:flex;align-items:center;justify-content:center;">
+                    <img src="${src}" style="width:100%;height:100%;object-fit:contain;display:block;">
+                </div>`).join('')}</div>`;
+        }
+
+        function renderTempImagesStatus(message = 'Imágenes listas. Ahora presiona “Agregar Ítem”.') {
+            const status = document.getElementById('img-status');
+            const btn = document.getElementById('img-btn');
+            if (!status) return;
+            if (!tempImgs.length) {
+                status.classList.add('hidden');
+                status.innerHTML = '';
+                if (btn) btn.innerText = '📷';
+                return;
+            }
+            status.classList.remove('hidden');
+            status.innerHTML = `
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    ${tempImgs.map((src, idx) => `
+                        <div style="position:relative;width:48px;height:48px;">
+                            <img src="${src}" style="width:48px;height:48px;object-fit:contain;border-radius:8px;background:#0f172a;border:1px solid #475569;">
+                            <button type="button" onclick="removeTempImage(${idx})" style="position:absolute;right:-5px;top:-7px;width:18px;height:18px;border-radius:50%;background:#ef4444;color:white;border:none;font-size:12px;line-height:18px;cursor:pointer;">×</button>
+                        </div>`).join('')}
+                    <span>${message}</span>
+                </div>`;
+            if (btn) btn.innerText = `✅ ${tempImgs.length}`;
+        }
+
+        function removeTempImage(index) {
+            if (index < 0 || index >= tempImgs.length) return;
+            tempImgs.splice(index, 1);
+            renderTempImagesStatus();
+        }
 
         function makeItemUid() {
             if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
@@ -314,7 +358,7 @@
             deletedItemIds.add(it._uid);
             if (editingItemIndex === i) {
                 editingItemIndex = null;
-                tempImg = null;
+                tempImgs = [];
             } else if (editingItemIndex !== null && editingItemIndex > i) {
                 editingItemIndex--;
             }
@@ -595,7 +639,7 @@
                 <tr>
                     <td style="padding:15px 8px; text-align:center; font-weight:700; font-size:15px;">${escapeHtmlSafe(it.qty || '')}</td>
                     <td style="padding:15px 8px; font-size:13px; line-height:1.4;">${escapeHtmlSafe(it.name || '').replace(/\n/g, '<br>')}</td>
-                    <td style="padding:15px 8px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height:30mm; max-width:30mm; object-fit:contain; border-radius:6px;">` : ''}</td>
+                    <td style="padding:15px 8px; text-align:center;">${getItemImages(it).length ? `<div style="display:flex;gap:4px;justify-content:center;align-items:center;">${getItemImages(it).map(src => `<img src="${src}" style="max-height:26mm; max-width:18mm; object-fit:contain; border-radius:6px;">`).join('')}</div>` : ''}</td>
                     <td style="padding:15px 8px; text-align:right; font-weight:800; font-size:13px;">${formatCLP(it.price)}</td>
                     <td style="padding:15px 8px; text-align:right; font-weight:800; font-size:14px;">${formatCLP(it.total)}</td>
                 </tr>
@@ -930,44 +974,21 @@
                     let index = 0;
                     let part = 0;
 
-                    // Ajustes de proporción síncronos por fila para centrar y evitar que se achate
-                    let imgW = 24;
-                    let imgH = 18;
-                    let dx = 0;
-                    let dy = 0;
-
-                    if (part === 0 && it.img) {
-                        try {
-                            const tempImgElement = new Image();
-                            tempImgElement.src = it.img;
-                            if (tempImgElement.width && tempImgElement.height) {
-                                const boxW = 24;
-                                const boxH = 18;
-                                const ratioBox = boxW / boxH;
-                                const ratioImg = tempImgElement.width / tempImgElement.height;
-
-                                if (ratioImg > ratioBox) {
-                                    imgW = boxW;
-                                    imgH = boxW / ratioImg;
-                                    dy = (boxH - imgH) / 2;
-                                } else {
-                                    imgH = boxH;
-                                    imgW = boxH * ratioImg;
-                                    dx = (boxW - imgW) / 2;
-                                }
-                            }
-                        } catch (e) {
-                            imgW = 24;
-                            imgH = 18;
-                        }
-                    }
+                    // Imágenes independientes por ítem. Compatibilidad con ítems antiguos de una sola imagen.
+                    const rowImages = getItemImages(it);
+                    const imageAreaW = 36;
+                    const imageAreaH = 18;
+                    const imageGap = 1.5;
+                    const imageCount = rowImages.length;
+                    const imageBoxW = imageCount ? Math.max(6, (imageAreaW - imageGap * (imageCount - 1)) / imageCount) : 0;
+                    const imageBoxH = imageAreaH;
 
                     while(index < lines.length || part === 0) {
                         const remaining = lines.length - index;
                         const take = Math.max(1, Math.min(maxLinesPerPart, remaining || 1));
                         const partLines = lines.slice(index, index + take);
 
-                        const hasImage = part === 0 && it.img;
+                        const hasImage = part === 0 && rowImages.length > 0;
                         const rowH = Math.max(12, partLines.length * lineH + 7, hasImage ? 24 : 0);
 
                         addPageIfNeeded(rowH + 2);
@@ -989,9 +1010,12 @@
                         pdf.text(partLines, m + 22, y + 7, { maxWidth: 78 });
 
                         if(hasImage) {
-                            try {
-                                pdf.addImage(it.img, 'JPEG', m + 107 + dx, y + 3 + dy, imgW, imgH);
-                            } catch(e) {}
+                            rowImages.forEach((src, imgIndex) => {
+                                try {
+                                    const x = m + 105 + imgIndex * (imageBoxW + imageGap);
+                                    pdf.addImage(src, 'JPEG', x, y + 3, imageBoxW, imageBoxH);
+                                } catch(e) {}
+                            });
                         }
 
                         if(part === 0) {
@@ -1077,7 +1101,7 @@
             editingItemIndex = null;
             loadedItemsSnapshot = [];
             deletedItemIds = new Set();
-            tempImg = null;
+            tempImgs = [];
             renderPreview();
         }
 
@@ -1116,7 +1140,8 @@
                 price: p,
                 qty: q,
                 total: p * q,
-                img: tempImg ? String(tempImg) : null,
+                imgs: tempImgs.map(String),
+                img: tempImgs.length ? String(tempImgs[0]) : null,
                 _uid: (editingItemIndex !== null && items[editingItemIndex]) ? ensureItemUid(items[editingItemIndex])._uid : makeItemUid()
             };
 
@@ -1134,7 +1159,7 @@
             document.getElementById('i-price').value = "";
             document.getElementById('i-qty').value = "1";
 
-            tempImg = null;
+            tempImgs = [];
 
             const fileInput = document.getElementById('f-img');
             const status = document.getElementById('img-status');
@@ -1158,22 +1183,18 @@
             document.getElementById('i-price').value = it.price || "";
             document.getElementById('i-qty').value = it.qty || 1;
 
-            tempImg = it.img || null;
+            tempImgs = [...getItemImages(it)];
             editingItemIndex = i;
 
             const status = document.getElementById('img-status');
             const btn = document.getElementById('img-btn');
 
-            if(tempImg && status) {
-                status.classList.remove('hidden');
-                status.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <img src="${tempImg}" style="width:42px;height:42px;object-fit:cover;border-radius:8px;">
-                        <span>Editando imagen del ítem.</span>
-                    </div>`;
+            if (tempImgs.length) {
+                renderTempImagesStatus('Imágenes actuales del ítem. Puedes agregar más o quitar alguna.');
+            } else {
+                if (status) { status.classList.add('hidden'); status.innerHTML = ''; }
+                if (btn) btn.innerText = '📷';
             }
-
-            if(btn && tempImg) btn.innerText = "✅";
 
             // El ítem permanece en la lista mientras se edita.
             // De esta forma conserva exactamente su posición original.
@@ -1202,7 +1223,7 @@
                 <tr>
                     <td style="padding:15px 8px; text-align:center; font-weight:700; font-size:15px;">${it.qty}</td>
                     <td style="padding:15px 8px; font-size:13px; line-height:1.4;">${escapeHtmlSafe(it.name || '').replace(/\n/g, '<br>')}</td>
-                    <td style="padding:15px 8px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height: 30mm; max-width: 30mm; object-fit: contain; border-radius:6px;">` : ''}</td>
+                    <td style="padding:15px 8px; text-align:center;">${getItemImages(it).length ? `<div style="display:flex;gap:4px;justify-content:center;align-items:center;">${getItemImages(it).map(src => `<img src="${src}" style="max-height:26mm;max-width:18mm;object-fit:contain;border-radius:6px;">`).join('')}</div>` : ''}</td>
                     <td style="padding:15px 8px; text-align:right; font-weight:800; font-size:13px;">$${Number(it.price || 0).toLocaleString('es-CL')}</td>
                     <td style="padding:15px 8px; text-align:right; font-weight:800; font-size:14px;">$${Number(it.total || 0).toLocaleString('es-CL')}</td>
                 </tr>`).join('');
@@ -1215,11 +1236,10 @@
 
             document.getElementById('items-list').innerHTML = items.map((it, i) => `
                 <div class="flex justify-between bg-slate-800 p-4 rounded-xl border border-slate-700 items-center gap-3">
-                    ${it.img ? `
-                        <div style="width:54px;height:54px;min-width:54px;border-radius:10px;overflow:hidden;background:#0f172a;border:1px solid #475569;display:flex;align-items:center;justify-content:center;">
-                            <img src="${it.img}" alt="Imagen del ítem" style="width:100%;height:100%;object-fit:contain;display:block;">
-                        </div>
-                    ` : ''}
+                    ${getItemImages(it).length ? `<div style="display:flex;gap:4px;flex-shrink:0;">${getItemImages(it).map(src => `
+                        <div style="width:48px;height:48px;min-width:48px;border-radius:8px;overflow:hidden;background:#0f172a;border:1px solid #475569;display:flex;align-items:center;justify-content:center;">
+                            <img src="${src}" alt="Imagen del ítem" style="width:100%;height:100%;object-fit:contain;display:block;">
+                        </div>`).join('')}</div>` : ''}
                     <span class="truncate flex-1 text-white text-xs font-bold uppercase">${it.name}</span>
                     <div class="flex items-center gap-2">
                         <button onclick="editItem(${i})" class="text-blue-400 text-lg px-2">✏️</button>
@@ -1236,7 +1256,7 @@
             loadedItemsSnapshot = items.map(it => ({ ...it }));
             deletedItemIds = new Set();
             editingItemIndex = null;
-            tempImg = null;
+            tempImgs = [];
             editingId = id; 
             window.currentFolio = h.folio; 
             document.getElementById('q-client').value = h.client; 
@@ -1246,79 +1266,78 @@
             renderPreview(); 
         }
 
-        function handleImg(input) {
-            const file = input.files && input.files[0];
+        async function handleImg(input) {
+            const files = Array.from(input.files || []);
             const status = document.getElementById('img-status');
             const btn = document.getElementById('img-btn');
 
-            if(!file) return;
+            if(!files.length) return;
 
-            if(!file.type || !file.type.startsWith('image/')) {
-                alert("El archivo seleccionado no es una imagen.");
+            const availableSlots = Math.max(0, 2 - tempImgs.length);
+            if (availableSlots === 0) {
+                alert("Este ítem ya tiene 2 imágenes. Quita una antes de agregar otra.");
+                input.value = "";
+                return;
+            }
+            const selectedFiles = files.slice(0, availableSlots);
+            if (files.length > availableSlots) {
+                alert("Cada ítem admite hasta 2 imágenes (por ejemplo, frente y reverso). Se cargarán las primeras " + availableSlots + ".");
+            }
+
+            const invalid = selectedFiles.find(file => !file.type || !file.type.startsWith('image/'));
+            if(invalid) {
+                alert("Todos los archivos seleccionados deben ser imágenes.");
                 input.value = "";
                 return;
             }
 
             if(status) {
                 status.classList.remove('hidden');
-                status.innerHTML = "Cargando imagen...";
+                status.innerHTML = `Procesando ${selectedFiles.length} imagen${selectedFiles.length === 1 ? '' : 'es'}...`;
             }
 
-            const reader = new FileReader();
-
-            reader.onload = e => {
-                const image = new Image();
-
-                image.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const maxSize = 420;
-
-                    let w = image.width;
-                    let h = image.height;
-
-                    if(w > h && w > maxSize) {
-                        h = Math.round(h * maxSize / w);
-                        w = maxSize;
-                    } else if(h > maxSize) {
-                        w = Math.round(w * maxSize / h);
-                        h = maxSize;
-                    }
-
-                    canvas.width = w;
-                    canvas.height = h;
-
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(image, 0, 0, w, h);
-
-                    tempImg = canvas.toDataURL('image/jpeg', 0.62);
-
-                    if(status) {
-                        status.innerHTML = `
-                            <div class="flex items-center gap-3">
-                                <img src="${tempImg}" style="width:42px;height:42px;object-fit:cover;border-radius:8px;">
-                                <span>Imagen lista y optimizada. Ahora presiona “Agregar Ítem”.</span>
-                            </div>`;
-                    }
-
-                    if(btn) btn.innerText = "✅";
+            const optimizeImage = file => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const image = new Image();
+                    image.onload = () => {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            const maxSize = 320;
+                            let w = image.width;
+                            let h = image.height;
+                            if(w > h && w > maxSize) {
+                                h = Math.round(h * maxSize / w);
+                                w = maxSize;
+                            } else if(h > maxSize) {
+                                w = Math.round(w * maxSize / h);
+                                h = maxSize;
+                            }
+                            canvas.width = w;
+                            canvas.height = h;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(image, 0, 0, w, h);
+                            resolve(canvas.toDataURL('image/jpeg', 0.55));
+                        } catch(err) { reject(err); }
+                    };
+                    image.onerror = reject;
+                    image.src = e.target.result;
                 };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
 
-                image.onerror = () => {
-                    tempImg = null;
-                    if(status) status.innerHTML = "No se pudo cargar la imagen.";
-                    if(btn) btn.innerText = "📷";
-                };
-
-                image.src = e.target.result;
-            };
-
-            reader.onerror = () => {
-                tempImg = null;
-                if(status) status.innerHTML = "No se pudo leer la imagen.";
-                if(btn) btn.innerText = "📷";
-            };
-
-            reader.readAsDataURL(file);
+            try {
+                const optimized = await Promise.all(selectedFiles.map(optimizeImage));
+                tempImgs.push(...optimized);
+                renderTempImagesStatus();
+                if(btn) btn.innerText = `✅ ${tempImgs.length}`;
+            } catch(err) {
+                console.error(err);
+                if(status) status.innerHTML = "No se pudo cargar una de las imágenes.";
+            } finally {
+                input.value = "";
+            }
         }
 
         async function saveClient() { 
