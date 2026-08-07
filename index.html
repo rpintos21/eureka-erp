@@ -1012,8 +1012,29 @@
                         if(hasImage) {
                             rowImages.forEach((src, imgIndex) => {
                                 try {
-                                    const x = m + 105 + imgIndex * (imageBoxW + imageGap);
-                                    pdf.addImage(src, 'JPEG', x, y + 3, imageBoxW, imageBoxH);
+                                    const boxX = m + 105 + imgIndex * (imageBoxW + imageGap);
+                                    const boxY = y + 3;
+
+                                    // Mantener siempre la proporción original de cada imagen.
+                                    // La imagen se ajusta dentro de su caja sin estirarse ni achatarse.
+                                    const props = pdf.getImageProperties(src);
+                                    const naturalW = Number(props.width || 1);
+                                    const naturalH = Number(props.height || 1);
+                                    const naturalRatio = naturalW / naturalH;
+                                    const boxRatio = imageBoxW / imageBoxH;
+
+                                    let drawW, drawH;
+                                    if (naturalRatio > boxRatio) {
+                                        drawW = imageBoxW;
+                                        drawH = imageBoxW / naturalRatio;
+                                    } else {
+                                        drawH = imageBoxH;
+                                        drawW = imageBoxH * naturalRatio;
+                                    }
+
+                                    const drawX = boxX + (imageBoxW - drawW) / 2;
+                                    const drawY = boxY + (imageBoxH - drawH) / 2;
+                                    pdf.addImage(src, 'JPEG', drawX, drawY, drawW, drawH);
                                 } catch(e) {}
                             });
                         }
