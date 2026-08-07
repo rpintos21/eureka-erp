@@ -513,7 +513,7 @@
             const rows = quoteItems.map(it => `
                 <tr>
                     <td style="padding:15px 8px; text-align:center; font-weight:700; font-size:15px;">${escapeHtmlSafe(it.qty || '')}</td>
-                    <td style="padding:15px 8px; font-size:13px; line-height:1.4;">${escapeHtmlSafe(it.name || '')}</td>
+                    <td style="padding:15px 8px; font-size:13px; line-height:1.4;">${escapeHtmlSafe(it.name || '').replace(/\n/g, '<br>')}</td>
                     <td style="padding:15px 8px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height:30mm; max-width:30mm; object-fit:contain; border-radius:6px;">` : ''}</td>
                     <td style="padding:15px 8px; text-align:right; font-weight:800; font-size:13px;">${formatCLP(it.price)}</td>
                     <td style="padding:15px 8px; text-align:right; font-weight:800; font-size:14px;">${formatCLP(it.total)}</td>
@@ -672,14 +672,21 @@
                         pdf.setFont(undefined, 'bold');
 
                         const descText = (q.desc || 'GENERAL').toUpperCase();
-                        pdf.text(`COT-${q.folio || folio} | ${descText}`, pageW - m, y + 7, { align: 'right' });
+                        const headerText = `COT-${q.folio || folio} | ${descText}`;
+                        const headerTextX = pageW - m;
+                        const headerTextStartX = m + 70;
+                        const headerTextMaxW = headerTextX - headerTextStartX;
+                        const headerLines = pdf.splitTextToSize(headerText, headerTextMaxW);
+                        pdf.text(headerLines, headerTextX, y + 7, { align: 'right' });
 
                         pdf.setFontSize(8);
                         pdf.setFont(undefined, 'normal');
                         pdf.setTextColor(100, 116, 139);
-                        pdf.text(`FECHA: ${fmtDate(q.date)}`, pageW - m, y + 13, { align: 'right' });
+                        const headerLineCount = Math.max(1, headerLines.length);
+                        const dateY = y + 13 + ((headerLineCount - 1) * 6);
+                        pdf.text(`FECHA: ${fmtDate(q.date)}`, headerTextX, dateY, { align: 'right' });
 
-                        y += 24;
+                        y += 24 + ((headerLineCount - 1) * 6);
 
                         pdf.setDrawColor(15, 23, 42);
                         pdf.setLineWidth(1.2);
@@ -833,7 +840,10 @@
 
                 function drawItemRow(it) {
                     const desc = String(it.name || "");
-                    const lines = pdf.splitTextToSize(desc, 78);
+                    const lines = desc.split(/\r?\n/).flatMap(line => {
+                        const wrapped = pdf.splitTextToSize(line || ' ', 78);
+                        return wrapped.length ? wrapped : [' '];
+                    });
                     const lineH = 4.4;
                     const maxLinesPerPart = 38;
                     let index = 0;
@@ -1071,7 +1081,7 @@
             document.getElementById('p-body').innerHTML = items.map(it => `
                 <tr>
                     <td style="padding:15px 8px; text-align:center; font-weight:700; font-size:15px;">${it.qty}</td>
-                    <td style="padding:15px 8px; font-size:13px; line-height:1.4;">${it.name}</td>
+                    <td style="padding:15px 8px; font-size:13px; line-height:1.4;">${escapeHtmlSafe(it.name || '').replace(/\n/g, '<br>')}</td>
                     <td style="padding:15px 8px; text-align:center;">${it.img ? `<img src="${it.img}" style="max-height: 30mm; max-width: 30mm; object-fit: contain; border-radius:6px;">` : ''}</td>
                     <td style="padding:15px 8px; text-align:right; font-weight:800; font-size:13px;">$${Number(it.price || 0).toLocaleString('es-CL')}</td>
                     <td style="padding:15px 8px; text-align:right; font-weight:800; font-size:14px;">$${Number(it.total || 0).toLocaleString('es-CL')}</td>
