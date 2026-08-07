@@ -71,6 +71,12 @@
             -webkit-overflow-scrolling: touch;
             touch-action: none !important;
             border-radius: 18px;
+            cursor: grab;
+            user-select: none;
+        }
+
+        #preliminar-container.is-dragging {
+            cursor: grabbing;
         }
 
         #pdf-preview-wrapper {
@@ -431,6 +437,54 @@
                     st.startDist = 0;
                 }
             }, { passive: false });
+
+            // Controles de escritorio SOLO para el preliminar del cotizador:
+            // rueda = zoom centrado en el cursor / arrastrar = mover la hoja.
+            if (containerId === 'preliminar-container') {
+                container.addEventListener('wheel', function(e) {
+                    const st = internalZoom[contentId];
+                    if (!st) return;
+                    e.preventDefault();
+
+                    const rect = container.getBoundingClientRect();
+                    const px = e.clientX - rect.left;
+                    const py = e.clientY - rect.top;
+                    const factor = e.deltaY < 0 ? 1.12 : 0.89;
+                    const newScale = Math.min(st.maxScale, Math.max(st.minScale, st.scale * factor));
+                    const ratio = newScale / st.scale;
+
+                    st.x = px - (px - st.x) * ratio;
+                    st.y = py - (py - st.y) * ratio;
+                    st.scale = newScale;
+                    applyInternalZoom(contentId);
+                }, { passive: false });
+
+                container.addEventListener('mousedown', function(e) {
+                    if (e.button !== 0) return;
+                    const st = internalZoom[contentId];
+                    if (!st) return;
+                    e.preventDefault();
+                    st.dragging = true;
+                    st.startX = e.clientX - st.x;
+                    st.startY = e.clientY - st.y;
+                    container.classList.add('is-dragging');
+                });
+
+                window.addEventListener('mousemove', function(e) {
+                    const st = internalZoom[contentId];
+                    if (!st || !st.dragging) return;
+                    st.x = e.clientX - st.startX;
+                    st.y = e.clientY - st.startY;
+                    applyInternalZoom(contentId);
+                });
+
+                window.addEventListener('mouseup', function() {
+                    const st = internalZoom[contentId];
+                    if (!st) return;
+                    st.dragging = false;
+                    container.classList.remove('is-dragging');
+                });
+            }
 
             container.addEventListener('dblclick', function(e) {
                 const st = internalZoom[contentId];
